@@ -21,6 +21,11 @@ public:
         const identifier::Server& notaryID,
         const OTTransaction& pending,
         const Message& reply) const final;
+    bool AcceptVoucher(
+        const identifier::Nym& nymID,
+        const opentxs::Cheque& voucher,
+        const Message& request,
+        const Message* reply) const final;
     bool AcknowledgeTransfer(
         const identifier::Nym& nymID,
         const Item& transfer,
@@ -34,7 +39,21 @@ public:
         const opentxs::Cheque& cheque,
         const Message& request,
         const Message* reply) const final;
+    bool CancelInvoice(
+        const opentxs::Cheque& invoice,
+        const Message& request,
+        const Message* reply) const final;
+    bool CancelVoucher(
+        const opentxs::Cheque& voucher,
+        const Message& request,
+        const Message* reply) const final;
     bool ClearCheque(
+        const identifier::Nym& recipientNymID,
+        const OTTransaction& receipt) const final;
+    bool ClearInvoice(
+        const identifier::Nym& recipientNymID,
+        const OTTransaction& receipt) const final;
+    bool ClearVoucher(
         const identifier::Nym& recipientNymID,
         const OTTransaction& receipt) const final;
     bool ClearTransfer(
@@ -52,23 +71,58 @@ public:
         const OTTransaction& pending) const final;
     OTIdentifier CreateTransfer(const Item& transfer, const Message& request)
         const final;
+    OTIdentifier CreateVoucher(const opentxs::Cheque& protoVoucher) const final;
     bool DepositCheque(
         const identifier::Nym& nymID,
         const Identifier& accountID,
         const opentxs::Cheque& cheque,
         const Message& request,
         const Message* reply) const final;
+    bool PayInvoice(
+        const identifier::Nym& nymID,
+        const Identifier& accountID,
+        const opentxs::Cheque& invoice,
+        const Message& request,
+        const Message* reply) const final;
+    bool DepositVoucher(
+        const identifier::Nym& nymID,
+        const Identifier& accountID,
+        const opentxs::Cheque& voucher,
+        const Message& request,
+        const Message* reply) const final;
     bool ExpireCheque(
         const identifier::Nym& nymID,
         const opentxs::Cheque& cheque) const final;
+    bool ExpireInvoice(
+        const identifier::Nym& nymID,
+        const opentxs::Cheque& invoice) const final;
+    bool ExpireVoucher(
+        const identifier::Nym& nymID,
+        const opentxs::Cheque& voucher) const final;
     bool ExportCheque(const opentxs::Cheque& cheque) const final;
+    bool ExportInvoice(const opentxs::Cheque& invoice) const final;
+    bool ExportVoucher(const opentxs::Cheque& voucher) const final;
     bool FinishCheque(
         const opentxs::Cheque& cheque,
         const Message& request,
         const Message* reply) const final;
+    bool FinishInvoice(
+        const opentxs::Cheque& invoice,
+        const Message& request,
+        const Message* reply) const final;
+    bool FinishVoucher(
+        const opentxs::Cheque& voucher,
+        const Message& request,
+        const Message* reply) const final;
     OTIdentifier ImportCheque(
-        const identifier::Nym& nymID,
+        const identifier::Nym& importerNymID,
         const opentxs::Cheque& cheque) const final;
+    OTIdentifier ImportInvoice(
+        const identifier::Nym& importerNymID,
+        const opentxs::Cheque& invoice) const final;
+    OTIdentifier ImportVoucher(
+        const identifier::Nym& importerNymID,
+        const opentxs::Cheque& voucher) const final;
     std::set<OTIdentifier> List(
         const identifier::Nym& nymID,
         const proto::PaymentWorkflowType type,
@@ -76,6 +130,18 @@ public:
     Cheque LoadCheque(const identifier::Nym& nymID, const Identifier& chequeID)
         const final;
     Cheque LoadChequeByWorkflow(
+        const identifier::Nym& nymID,
+        const Identifier& workflowID) const final;
+    Cheque LoadInvoice(
+        const identifier::Nym& nymID,
+        const Identifier& invoiceID) const final;
+    Cheque LoadInvoiceByWorkflow(
+        const identifier::Nym& nymID,
+        const Identifier& workflowID) const final;
+    Cheque LoadVoucher(
+        const identifier::Nym& nymID,
+        const Identifier& voucherID) const final;
+    Cheque LoadVoucherByWorkflow(
         const identifier::Nym& nymID,
         const Identifier& workflowID) const final;
     Transfer LoadTransfer(
@@ -97,6 +163,14 @@ public:
         const identifier::Nym& nymID,
         const opentxs::Cheque& cheque,
         const Message& message) const final;
+    OTIdentifier ReceiveInvoice(
+        const identifier::Nym& nymID,
+        const opentxs::Cheque& invoice,
+        const Message& message) const final;
+    OTIdentifier ReceiveVoucher(
+        const identifier::Nym& nymID,
+        const opentxs::Cheque& voucher,
+        const Message& message) const final;
 #if OT_CASH
     bool SendCash(
         const identifier::Nym& sender,
@@ -109,10 +183,19 @@ public:
         const opentxs::Cheque& cheque,
         const Message& request,
         const Message* reply) const final;
+    bool SendInvoice(
+        const opentxs::Cheque& invoice,
+        const Message& request,
+        const Message* reply) const final;
+    bool SendVoucher(
+        const opentxs::Cheque& voucher,
+        const Message& request,
+        const Message* reply) const final;
     std::vector<OTIdentifier> WorkflowsByAccount(
         const identifier::Nym& nymID,
         const Identifier& accountID) const final;
     OTIdentifier WriteCheque(const opentxs::Cheque& cheque) const final;
+    OTIdentifier WriteInvoice(const opentxs::Cheque& invoice) const final;
 
     ~Workflow() final = default;
 
@@ -138,30 +221,105 @@ private:
 
     static bool can_abort_transfer(const proto::PaymentWorkflow& workflow);
     static bool can_accept_cheque(const proto::PaymentWorkflow& workflow);
+    //    static bool can_accept_invoice(const proto::PaymentWorkflow&
+    //    workflow); static bool can_accept_voucher(const
+    //    proto::PaymentWorkflow& workflow);
     static bool can_accept_transfer(const proto::PaymentWorkflow& workflow);
     static bool can_acknowledge_transfer(
         const proto::PaymentWorkflow& workflow);
     static bool can_cancel_cheque(const proto::PaymentWorkflow& workflow);
+    //    static bool can_cancel_invoice(const proto::PaymentWorkflow&
+    //    workflow); static bool can_cancel_voucher(const
+    //    proto::PaymentWorkflow& workflow);
     static bool can_clear_transfer(const proto::PaymentWorkflow& workflow);
     static bool can_complete_transfer(const proto::PaymentWorkflow& workflow);
 #if OT_CASH
     static bool can_convey_cash(const proto::PaymentWorkflow& workflow);
 #endif
     static bool can_convey_cheque(const proto::PaymentWorkflow& workflow);
+    //    static bool can_convey_invoice(const proto::PaymentWorkflow&
+    //    workflow); static bool can_convey_voucher(const
+    //    proto::PaymentWorkflow& workflow);
     static bool can_convey_transfer(const proto::PaymentWorkflow& workflow);
     static bool can_deposit_cheque(const proto::PaymentWorkflow& workflow);
+    //    static bool can_pay_invoice(const proto::PaymentWorkflow& workflow);
+    //    static bool can_deposit_voucher(const proto::PaymentWorkflow&
+    //    workflow);
     static bool can_expire_cheque(
         const opentxs::Cheque& cheque,
         const proto::PaymentWorkflow& workflow);
+    //    static bool can_expire_invoice(
+    //        const opentxs::Cheque& invoice,
+    //        const proto::PaymentWorkflow& workflow);
+    //    static bool can_expire_voucher(
+    //        const opentxs::Cheque& voucher,
+    //        const proto::PaymentWorkflow& workflow);
     static bool can_finish_cheque(const proto::PaymentWorkflow& workflow);
+    //    static bool can_finish_invoice(const proto::PaymentWorkflow&
+    //    workflow);
+    // I don't think we need a 'can_finish_voucher' since there's no
+    // chequeReceipt in your inbox, since the "sender" is really only
+    // the remitter.
     static bool cheque_deposit_success(const Message* message);
+    //    static bool invoice_pay_success(const Message* message);
+    //    static bool voucher_deposit_success(const Message* message);
     static std::chrono::time_point<std::chrono::system_clock>
     extract_conveyed_time(const proto::PaymentWorkflow& workflow);
     static bool isCheque(const opentxs::Cheque& cheque);
+    static bool isInvoice(const opentxs::Cheque& invoice);
+    static bool isVoucher(
+        const opentxs::Cheque& voucher,
+        const Identifier& depositorNymID);
     static bool isTransfer(const Item& item);
     static bool validate_recipient(
         const identifier::Nym& nymID,
         const opentxs::Cheque& cheque);
+
+    std::unique_ptr<Message> extract_message(
+        const Armored& armored,
+        const identity::Nym* signer = nullptr  // Optional argument.
+        ) const;
+
+    std::unique_ptr<Ledger> Workflow::extract_ledger(
+        const Armored& armored,
+        const identifier::Nym& ownerNymId,
+        const Identifier& accountId,
+        const identifier::Server& notaryId,
+        const identity::Nym* signerNym = nullptr  // Optional argument.
+        ) const;
+
+    bool extract_ledgers_from_messages(
+        const Message& request,
+        const Message* pReply,
+        std::unique_ptr<Ledger>& requestLedger,
+        std::unique_ptr<Ledger>& replyLedger,
+        const identity::Nym* signer = nullptr) const;
+
+    bool Workflow::extract_transaction_from_ledger(
+        const Ledger& ledger,
+        const std::set<transactionType>& required_types,
+        std::shared_ptr<OTTransaction>& transaction) const;
+
+    bool is_message_transaction(const Message& msg);
+
+    bool extract_status_from_messages(
+        const Message& request,
+        const Message* pReply,
+        const identity::Nym* signer = nullptr) const;
+
+    bool extract_status_from_messages(
+        const Message& request,
+        const Message* pReply,
+        std::unique_ptr<Ledger>& requestLedger,
+        std::unique_ptr<Ledger>& replyLedger,
+        std::shared_ptr<OTTransaction>& requestTransaction,
+        std::shared_ptr<OTTransaction>& replyTransaction,
+        bool& messageReplyReceived,
+        bool& messageReplySuccess,
+        bool& isTransaction,
+        bool& txnReplyReceived,
+        bool& txnReplySuccess,
+        const identity::Nym* signer = nullptr) const;
 
     bool add_cheque_event(
         const eLock& lock,

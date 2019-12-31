@@ -70,6 +70,14 @@ public:
     std::size_t DepositCheques(
         const identifier::Nym& nymID,
         const std::set<OTIdentifier>& chequeIDs) const final;
+    std::size_t PayInvoices(const identifier::Nym& nymID) const final;
+    std::size_t PayInvoices(
+        const identifier::Nym& nymID,
+        const std::set<OTIdentifier>& invoiceIDs) const final;
+    std::size_t DepositVouchers(const identifier::Nym& nymID) const final;
+    std::size_t DepositVouchers(
+        const identifier::Nym& nymID,
+        const std::set<OTIdentifier>& voucherIDs) const final;
     BackgroundTask DepositPayment(
         const identifier::Nym& recipientNymID,
         const std::shared_ptr<const OTPayment>& payment) const final;
@@ -202,6 +210,22 @@ public:
         const std::string& memo,
         const Time validFrom,
         const Time validTo) const final;
+    BackgroundTask SendInvoice(
+        const identifier::Nym& localNymID,
+        const Identifier& sourceAccountID,
+        const Identifier& recipientContactID,
+        const Amount value,
+        const std::string& memo,
+        const Time validFrom,
+        const Time validTo) const final;
+    BackgroundTask SendVoucher(
+        const identifier::Nym& localNymID,
+        const Identifier& sourceAccountID,
+        const Identifier& recipientContactID,
+        const Amount value,
+        const std::string& memo,
+        const Time validFrom,
+        const Time validTo) const final;
     BackgroundTask SendExternalTransfer(
         const identifier::Nym& localNymID,
         const identifier::Server& serverID,
@@ -225,6 +249,14 @@ public:
         const Identifier& account,
         const Amount value) const final;
 #endif  // OT_CASH
+    BackgroundTask WithdrawVoucher(
+        const identifier::Nym& nymID,
+        const Identifier& sourceAccountID,
+        const Identifier& recipientContactID,
+        const Amount value,
+        const std::string& memo,
+        const Time validFrom,
+        const Time validTo) const final;
 
     ~OTX();
 
@@ -233,9 +265,13 @@ private:
 
     friend opentxs::Factory;
 
-    using TaskStatusMap =
-        std::map<TaskID, std::pair<ThreadStatus, std::promise<Result>>>;
+    using BackgroundTask = api::client::OTX::BackgroundTask;
+    using TaskID = api::client::OTX::TaskID;
+    using Result = api::client::OTX::Result;
     using ContextID = std::pair<OTNymID, OTServerID>;
+    using Finish = std::function<bool(const TaskID, const bool, Result&&)>;
+    using TaskStatusMap = std::
+        map<TaskID, std::tuple<ThreadStatus, std::promise<Result>, Finish>>;
 
     ContextLockCallback lock_callback_;
     const Flag& running_;
@@ -278,8 +314,10 @@ private:
         return Result{proto::LASTREPLYSTATUS_NOTSENT, nullptr};
     }
 
-    BackgroundTask add_task(const TaskID taskID, const ThreadStatus status)
-        const;
+    BackgroundTask add_task(
+        const TaskID taskID,
+        const ThreadStatus status,
+        Finish finish = {}) const;
     void associate_message_id(const Identifier& messageID, const TaskID taskID)
         const final;
     Depositability can_deposit(
@@ -341,7 +379,10 @@ private:
     OTServerID set_introduction_server(
         const Lock& lock,
         const contract::Server& contract) const;
-    BackgroundTask start_task(const TaskID taskID, bool success) const final;
+    BackgroundTask start_task(
+        const TaskID taskID,
+        bool success,
+        Finish finish = {}) const final;
     ThreadStatus status(const Lock& lock, const TaskID taskID) const;
     void update_task(
         const TaskID taskID,

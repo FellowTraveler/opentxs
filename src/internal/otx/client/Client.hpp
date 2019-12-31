@@ -87,6 +87,17 @@ using RegisterNymTask = bool;
  */
 using SendChequeTask =
     std::tuple<OTIdentifier, OTNymID, Amount, std::string, Time, Time>;
+/** SendInvoiceTask: sourceAccountID, targetNymID, value, memo, validFrom,
+ * validTo.  Note that "sourceAccountID" is where the payment will be SENT
+ * since the "source" is the guy who drafted the invoice.
+ */
+using SendInvoiceTask =
+    std::tuple<OTIdentifier, OTNymID, Amount, std::string, Time, Time>;
+/** SendVoucherTask: sourceAccountID, targetNymID, value, memo, validFrom,
+ * validTo
+ */
+using SendVoucherTask =
+    std::tuple<OTIdentifier, OTNymID, Amount, std::string, Time, Time>;
 /** SendTransferTask: source account, destination account, amount, memo
  */
 using SendTransferTask =
@@ -95,6 +106,10 @@ using SendTransferTask =
 /** WithdrawCashTask: Account ID, amount*/
 using WithdrawCashTask = std::pair<OTIdentifier, Amount>;
 #endif  // OT_CASH
+/** WithdrawVoucherTask: sourceAccountID, targetNymID, value, memo, validFrom,
+ * validTo */
+using WithdrawVoucherTask =
+    std::tuple<OTIdentifier, OTNymID, Amount, std::string, Time, Time>;
 }  // namespace opentxs::otx::client
 
 namespace opentxs
@@ -191,6 +206,30 @@ struct make_blank<otx::client::SendChequeTask> {
     }
 };
 template <>
+struct make_blank<otx::client::SendInvoiceTask> {
+    static otx::client::SendInvoiceTask value(const api::Core& api)
+    {
+        return {make_blank<OTIdentifier>::value(api),
+                make_blank<OTNymID>::value(api),
+                0,
+                "",
+                Clock::now(),
+                Clock::now()};
+    }
+};
+template <>
+struct make_blank<otx::client::SendVoucherTask> {
+    static otx::client::SendVoucherTask value(const api::Core& api)
+    {
+        return {make_blank<OTIdentifier>::value(api),
+                make_blank<OTNymID>::value(api),
+                0,
+                "",
+                Clock::now(),
+                Clock::now()};
+    }
+};
+template <>
 struct make_blank<otx::client::SendTransferTask> {
     static otx::client::SendTransferTask value(const api::Core& api)
     {
@@ -209,6 +248,18 @@ struct make_blank<otx::client::WithdrawCashTask> {
     }
 };
 #endif  // OT_CASH
+template <>
+struct make_blank<otx::client::WithdrawVoucherTask> {
+    static otx::client::WithdrawVoucherTask value(const api::Core& api)
+    {
+        return {make_blank<OTIdentifier>::value(api),
+                make_blank<OTNymID>::value(api),
+                0,
+                "",
+                Clock::now(),
+                Clock::now()};
+    }
+};
 }  // namespace opentxs
 
 namespace opentxs::otx::client::internal
@@ -228,6 +279,7 @@ struct Operation {
         DownloadMint,
         GetTransactionNumbers,
         IssueUnitDefinition,
+        PayInvoice,
         PublishNym,
         PublishServer,
         PublishUnit,
@@ -241,6 +293,7 @@ struct Operation {
         SendPeerRequest,
         SendTransfer,
         WithdrawCash,
+        WithdrawVoucher,
     };
 
     virtual const identifier::Nym& NymID() const = 0;
@@ -262,6 +315,9 @@ struct Operation {
     virtual bool DepositCheque(
         const Identifier& depositAccountID,
         const std::shared_ptr<Cheque> cheque) = 0;
+    virtual bool PayInvoice(
+        const Identifier& depositAccountID,
+        const std::shared_ptr<Cheque> invoice) = 0;
     virtual bool DownloadContract(
         const Identifier& ID,
         const ContractType type = ContractType::invalid) = 0;
@@ -314,6 +370,13 @@ struct Operation {
         const Identifier& accountID,
         const Amount amount) = 0;
 #endif
+    virtual bool WithdrawVoucher(
+        const Identifier& sourceAccountID,
+        const Identifier& recipientContactID,
+        const Amount amount,
+        const std::string& memo,
+        const Time validFrom,
+        const Time validTo) = 0;
 
     virtual ~Operation() = default;
 };
@@ -322,6 +385,7 @@ struct StateMachine {
     using BackgroundTask = api::client::OTX::BackgroundTask;
     using Result = api::client::OTX::Result;
     using TaskID = api::client::OTX::TaskID;
+    using Finish = std::function<bool(const TaskID, const bool, Result&&)>;
 
     virtual const api::internal::Core& api() const = 0;
     virtual BackgroundTask DepositPayment(
@@ -336,8 +400,10 @@ struct StateMachine {
     virtual TaskID next_task_id() const = 0;
     virtual BackgroundTask RegisterAccount(
         const otx::client::RegisterAccountTask& params) const = 0;
-    virtual BackgroundTask start_task(const TaskID taskID, bool success)
-        const = 0;
+    virtual BackgroundTask start_task(
+        const TaskID taskID,
+        bool success,
+        Finish finish = {}) const = 0;
 
     virtual ~StateMachine() = default;
 };

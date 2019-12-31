@@ -280,6 +280,7 @@ const std::map<Operation::Type, Operation::Category> Operation::category_{
     {Type::DownloadMint, Category::Basic},
     {Type::GetTransactionNumbers, Category::NymboxPre},
     {Type::IssueUnitDefinition, Category::CreateAccount},
+    {Type::PayInvoice, Category::Transaction},
     {Type::PublishNym, Category::Basic},
     {Type::PublishServer, Category::Basic},
     {Type::PublishUnit, Category::Basic},
@@ -293,6 +294,7 @@ const std::map<Operation::Type, Operation::Category> Operation::category_{
     {Type::SendPeerRequest, Category::Basic},
     {Type::SendTransfer, Category::Transaction},
     {Type::WithdrawCash, Category::Transaction},
+    {Type::WithdrawVoucher, Category::Transaction},
 };
 
 const std::map<Operation::Type, std::size_t> Operation::transaction_numbers_{
@@ -305,6 +307,7 @@ const std::map<Operation::Type, std::size_t> Operation::transaction_numbers_{
     {Type::DownloadMint, 0},
     {Type::GetTransactionNumbers, 0},
     {Type::IssueUnitDefinition, 0},
+    {Type::PayInvoice, 2},
     {Type::PublishNym, 0},
     {Type::PublishServer, 0},
     {Type::PublishUnit, 0},
@@ -318,6 +321,7 @@ const std::map<Operation::Type, std::size_t> Operation::transaction_numbers_{
     {Type::SendPeerRequest, 0},
     {Type::SendTransfer, 2},
     {Type::WithdrawCash, 2},
+    {Type::WithdrawVoucher, 2},
 };
 
 Operation::Operation(
@@ -352,6 +356,7 @@ Operation::Operation(
     , claim_section_(proto::CONTACTSECTION_ERROR)
     , claim_type_(proto::CITEMTYPE_ERROR)
     , cheque_()
+    , invoice_()
     , payment_()
     , inbox_()
     , outbox_()
@@ -365,6 +370,8 @@ Operation::Operation(
     , peer_reply_(api_.Factory().PeerReply())
     , peer_request_(api_.Factory().PeerRequest())
     , set_id_()
+    , validFrom_()
+    , validTo_()
 {
 }
 
@@ -462,6 +469,10 @@ std::shared_ptr<Message> Operation::construct()
 
             return construct_issue_unit_definition();
         }
+        case Type::PayInvoice: {
+
+            return construct_pay_invoice();
+        }
         case Type::PublishNym: {
 
             return construct_publish_nym();
@@ -514,6 +525,10 @@ std::shared_ptr<Message> Operation::construct()
             return construct_withdraw_cash();
         }
 #endif
+        case Type::WithdrawVoucher: {
+
+            return construct_withdraw_voucher();
+        }
         default: {
             LogOutput(OT_METHOD)(__FUNCTION__)(": Unknown message type")
                 .Flush();
@@ -755,6 +770,112 @@ std::shared_ptr<Message> Operation::construct_deposit_cheque()
                          : "Deposit this cheque, please!");
     item.SetNote(strNote);
     item.SetAttachment(String::Factory(cheque));
+
+    FINISH_TRANSACTION();
+}
+
+std::shared_ptr<Message> Operation::construct_pay_invoice()
+{
+    if (false == bool(invoice_)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": No invoice to pay").Flush();
+
+        return {};
+    }
+
+    auto& invoice = *invoice_;
+    const Amount amount{invoice.GetAmount()};
+
+    PREPARE_TRANSACTION(
+        transactionType::deposit,
+        originType::not_applicable,
+        itemType::depositCheque,
+        Identifier::Factory(),
+        amount);
+
+    if (invoice.GetNotaryID() != serverID) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": NotaryID on invoice (")(
+            invoice.GetNotaryID())(
+            ") doesn't match notaryID where it's being deposited to (")(
+            serverID)(").")
+            .Flush();
+
+        return {};
+    }
+
+    // If cancellingCheque==true, we're actually cancelling the cheque by
+    // "depositing" it back into the same account it's drawn on.
+    bool cancellingCheque{false};
+    auto copy{api_.Factory().Cheque(
+        serverID, account.get().GetInstrumentDefinitionID())};
+
+    cancellingCheque =
+        ((cheque.GetSenderAcctID() == account_id_) &&
+         (cheque.GetSenderNymID() == nymID));
+
+    if (cancellingCheque) {
+        cancellingCheque = invoice.VerifySignature(nym, reason_);
+        cancellingCheque =
+            context.VerifyIssuedNumber(invoice.GetTransactionNum());
+
+        // If we TRIED to cancel the invoice (being in this block...) yet the
+        // signature fails to verify, or the transaction number isn't even
+        // issued, then our attempt to cancel the invoice is going to fail.
+        if (false == cancellingCheque) {
+            // This is the "tried and failed" block.
+            LogOutput(OT_METHOD)(__FUNCTION__)(
+                ": Cannot cancel this invoice. Either the signature fails to "
+                "verify, or the transaction number is already closed out.")
+                .Flush();
+
+            return {};
+        }
+
+        // Else we succeeded in verifying signature and issued num.
+        // Let's just make sure there isn't a chequeReceipt already
+        // sitting in the inbox, for this same cheque.
+        auto pChequeReceipt =
+            inbox_->GetChequeReceipt(invoice.GetTransactionNum(), reason_);
+
+        if (pChequeReceipt) {
+            LogOutput(OT_METHOD)(__FUNCTION__)(
+                ": Cannot cancel this invoice. There is already a "
+                "chequeReceipt for it in the inbox.")
+                .Flush();
+
+            return {};
+        }
+
+        if (false ==
+            copy->LoadContractFromString(String::Factory(invoice), reason_)) {
+            LogOutput(OT_METHOD)(__FUNCTION__)(
+                ": Unable to load invoice from string.")
+                .Flush();
+
+            return {};
+        }
+    }
+
+    // By this point, we're either NOT canceling the invoice, or if we are,
+    // we've already verified the signature and transaction number on the
+    // invoice. (AND we've already verified that there aren't any
+    // chequeReceipts for this invoice, in the inbox.)
+    const bool cancel = (cancellingCheque && !invoice.HasRemitter());
+
+    if (cancel) {
+        copy->CancelCheque();
+        copy->ReleaseSignatures();
+        copy->SignContract(nym, reason_);
+        copy->SaveContract();
+        invoice_.reset(copy.release());
+
+        OT_ASSERT(invoice_);
+    }
+
+    const auto strNote = String::Factory(
+        cancellingCheque ? "Cancel this invoice, please!"
+                         : "Pay this invoice, please!");
+    item.SetNote(strNote);
+    item.SetAttachment(String::Factory(invoice));
 
     FINISH_TRANSACTION();
 }
@@ -1336,6 +1457,85 @@ std::shared_ptr<Message> Operation::construct_withdraw_cash()
 }
 #endif
 
+std::shared_ptr<Message> Operation::construct_withdraw_voucher()
+{
+    const Amount totalAmount(amount_);
+
+    PREPARE_TRANSACTION(
+        transactionType::withdrawal,
+        originType::not_applicable,
+        itemType::withdrawVoucher,
+        Identifier::Factory(),
+        totalAmount * (-1));
+
+    if (numbers_.size() < 2) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Not enough txn numbers").Flush();
+
+        return {};
+    }
+    // ------------------------------------------------------
+    auto number_it = numbers_.begin();
+    auto voucherNumber = *number_it;
+    numbers_.erase(number_it);
+
+    if (!voucherNumber->Valid()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Not enough Transaction Numbers were available. "
+            "(Suggest requesting the server for more).")
+            .Flush();
+
+        return {};
+    }
+    // ------------------------------------------------------
+    const auto& unitTypeId = account.get().GetInstrumentDefinitionID();
+
+    auto pRequestVoucher{api_.Factory().Cheque(serverID, unitTypeId)};
+    OT_ASSERT(false != bool(pRequestVoucher));
+
+    const auto strChequeMemo = String::Factory(memo_.c_str());
+    const bool bIssueCheque = pRequestVoucher->IssueCheque(
+        amount_,
+        voucherNumber->Value(),
+        validFrom_,
+        validTo_,
+        account.get().ID(),
+        nymID,
+        strChequeMemo,
+        target_nym_id_);
+
+    if (!bIssueCheque) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Failed to issue the voucher")
+            .Flush();
+
+        return {};
+    }
+    pRequestVoucher->SetAsVoucher();
+    pRequestVoucher->SignContract(nym, reason_);
+    pRequestVoucher->SaveContract();
+
+    auto strVoucher = String::Factory(*pRequestVoucher);
+    item.SetAttachment(strVoucher);
+    item.SetAmount(amount_);
+    item.SetNote(String::Factory(" "));
+
+    const auto workflowID =
+        api_.Workflow().CreateVoucher(*pRequestVoucher, reason_);
+
+    if (workflowID->empty()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Failed to create voucher workflow")
+            .Flush();
+    } else {
+        LogDetail(OT_METHOD)(__FUNCTION__)(": Created voucher ")(
+            pRequestVoucher->GetTransactionNum())(" workflow ")(workflowID)
+            .Flush();
+    }
+
+    voucherNumber->SetSuccess(true);
+
+    FINISH_TRANSACTION();
+}
+
 Editor<ServerContext> Operation::context() const
 {
     return api_.Wallet().mutable_ServerContext(nym_id_, server_id_, reason_);
@@ -1411,6 +1611,19 @@ bool Operation::DepositCheque(
     cheque_ = cheque;
 
     return start(lock, Type::DepositCheque, {});
+}
+
+bool Operation::PayInvoice(
+    const Identifier& depositAccountID,
+    const std::shared_ptr<Cheque> invoice)
+{
+    START()
+
+    account_id_ = depositAccountID;
+    affected_accounts_.insert(depositAccountID);
+    invoice_ = invoice;
+
+    return start(lock, Type::PayInvoice, {});
 }
 
 bool Operation::download_accounts(
@@ -2732,6 +2945,28 @@ bool Operation::WithdrawCash(const Identifier& accountID, const Amount amount)
     return start(lock, Type::WithdrawCash, {});
 }
 #endif
+
+bool Operation::WithdrawVoucher(
+    const Identifier& sourceAccountID,
+    const identifier::Nym& recipientNymID,
+    const Amount value,
+    const std::string& memo,
+    const Time validFrom,
+    const Time validTo)
+{
+    START()
+
+    account_id_ = sourceAccountID;
+    target_nym_id_ = recipientNymID;
+    amount_ = value;
+    memo_ = memo;
+    validFrom_ = validFrom;
+    validTo_ = validTo;
+
+    affected_accounts_.insert(sourceAccountID);
+
+    return start(lock, Type::WithdrawVoucher, {});
+}
 
 Operation::~Operation()
 {

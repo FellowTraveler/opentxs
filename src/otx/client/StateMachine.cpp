@@ -167,10 +167,13 @@ StateMachine::StateMachine(
     , register_account_()
     , register_nym_()
     , send_cheque_()
+    , send_invoice_()
+    , send_voucher_()
     , send_transfer_()
 #if OT_CASH
     , withdraw_cash_()
 #endif  // OT_CASH
+    , withdraw_voucher_()
     , param_()
     , task_id_()
     , counter_(0)
@@ -425,6 +428,64 @@ bool StateMachine::deposit_cheque_wrapper(
     return output;
 }
 
+bool StateMachine::pay_invoice(
+    const TaskID taskID,
+    const DepositPaymentTask& task) const
+{
+    const auto& [unitID, accountID, payment] = task;
+
+    OT_ASSERT(false == accountID->empty());
+    OT_ASSERT(payment);
+
+    if (false == payment->IsInvoice()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Unhandled payment type.").Flush();
+
+        return finish_task(taskID, false, error_result());
+    }
+
+    std::shared_ptr<Cheque> invoice{client_.Factory().Cheque()};
+
+    OT_ASSERT(invoice);
+
+    const auto loaded =
+        invoice->LoadContractFromString(payment->Payment(), reason_);
+
+    if (false == loaded) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid invoice.").Flush();
+
+        return finish_task(taskID, false, error_result());
+    }
+
+    DO_OPERATION(PayInvoice, accountID, invoice);
+
+    if (success) { return finish_task(taskID, success, std::move(result)); }
+
+    return false;
+}
+
+bool StateMachine::pay_invoice_wrapper(
+    const TaskID task,
+    const DepositPaymentTask& param,
+    UniqueQueue<DepositPaymentTask>& retry) const
+{
+    bool output{false};
+    const auto& [unitID, accountIDHint, payment] = param;
+
+    OT_ASSERT(payment);
+
+    auto depositServer = identifier::Server::Factory();
+    auto depositUnitID = identifier::UnitDefinition::Factory();
+    auto depositAccount = Identifier::Factory();
+    output = pay_invoice(task, param);
+
+    if (false == output) {
+        retry.Push(task, param);
+        bump_task(get_task<RegisterNymTask>().Push(next_task_id(), false));
+    }
+
+    return output;
+}
+
 #if OT_CASH
 bool StateMachine::download_mint(
     const TaskID taskID,
@@ -666,6 +727,9 @@ bool StateMachine::main_loop() noexcept
     UniqueQueue<DepositPaymentTask> retryDepositPayment{};
     UniqueQueue<RegisterNymTask> retryRegisterNym{};
     UniqueQueue<SendChequeTask> retrySendCheque{};
+    UniqueQueue<SendInvoiceTask> retrySendInvoice{};
+    UniqueQueue<SendVoucherTask> retrySendVoucher{};
+
     auto pContext = client_.Wallet().ServerContext(nymID, serverID);
 
     OT_ASSERT(pContext)
@@ -700,16 +764,25 @@ bool StateMachine::main_loop() noexcept
     // Transactions
     check_transaction_numbers(context);
     run_task<GetTransactionNumbersTask>(&StateMachine::get_transaction_numbers);
+
     run_task<SendChequeTask>(
         &StateMachine::write_and_send_cheque_wrapper, retrySendCheque);
+    run_task<SendInvoiceTask>(
+        &StateMachine::write_and_send_invoice_wrapper, retrySendInvoice);
+    run_task<SendVoucherTask>(
+        &StateMachine::send_voucher_wrapper, retrySendVoucher);
+    // resume
     run_task<PaymentTask>(&StateMachine::pay_nym);
     run_task<DepositPaymentTask>(
         &StateMachine::deposit_cheque_wrapper, retryDepositPayment);
+    run_task<DepositPaymentTask>(
+        &StateMachine::pay_invoice_wrapper, retryDepositPayment);
     run_task<SendTransferTask>(&StateMachine::send_transfer);
 #if OT_CASH
     run_task<WithdrawCashTask>(&StateMachine::withdraw_cash);
     run_task<PayCashTask>(&StateMachine::pay_nym_cash);
 #endif
+    run_task<WithdrawVoucherTask>(&StateMachine::withdraw_voucher);
 
     // Account maintenance
     run_task<RegisterAccountTask>(&StateMachine::register_account_wrapper);
@@ -1037,26 +1110,31 @@ bool StateMachine::send_transfer(
 }
 
 template <typename T>
-StateMachine::BackgroundTask StateMachine::StartTask(const T& params) const
+StateMachine::BackgroundTask StateMachine::StartTask(
+    const T& params,
+    Finish finish /*={}*/) const
 {
-    return StartTask<T>(next_task_id(), params);
+    return StartTask<T>(next_task_id(), params, finish);
 }
 
 template <typename T>
 StateMachine::BackgroundTask StateMachine::StartTask(
     const TaskID taskID,
-    const T& params) const
+    const T& params,
+    Finish finish /*={}*/) const
 {
     Lock lock(decision_lock_);
 
     if (shutdown().load()) {
-        LogVerbose(OT_METHOD)(__FUNCTION__)(": Shutting down").Flush();
+        LogVerbose(OT_METHOD)(FUNCTION)(": Shutting down").Flush();
 
         return BackgroundTask{0, Future{}};
     }
 
+    auto& queue = get_task<T>();
+    Lock lock(queue.lock_);
     auto output =
-        start_task(taskID, bump_task(get_task<T>().Push(taskID, params)));
+        start_task(taskID, bump_task(queue.Push(lock, taskID, params)), finish);
     trigger(lock);
 
     return output;
@@ -1183,4 +1261,176 @@ bool StateMachine::write_and_send_cheque_wrapper(
 
     return TaskDone::yes == done;
 }
+
+TaskDone StateMachine::write_and_send_invoice(
+    const TaskID taskID,
+    const SendInvoiceTask& param) const
+{
+    const auto& [accountID, recipient, value, memo, validFrom, validTo] = param;
+
+    OT_ASSERT(false == accountID->empty())
+    OT_ASSERT(false == recipient->empty())
+
+    if (0 >= value) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount.").Flush();
+
+        return task_done(finish_task(taskID, false, error_result()));
+    }
+
+    auto context =
+        client_.Wallet().ServerContext(op_.NymID(), op_.ServerID(), reason_);
+
+    OT_ASSERT(context);
+
+    if (false ==
+        context->HaveSufficientNumbers(MessageType::notarizeTransaction)) {
+        return TaskDone::retry;
+    }
+
+    std::unique_ptr<Cheque> invoice(client_.OTAPI().WriteCheque(
+        op_.ServerID(),
+        value * (-1),
+        validFrom,
+        validTo,
+        accountID,
+        op_.NymID(),
+        String::Factory(memo.c_str()),
+        recipient));
+
+    if (false == bool(invoice)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Failed to write invoice.")
+            .Flush();
+
+        return task_done(finish_task(taskID, false, error_result()));
+    }
+
+    std::shared_ptr<OTPayment> payment{
+        client_.Factory().Payment(String::Factory(*invoice))};
+
+    if (false == bool(payment)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Failed to instantiate payment.")
+            .Flush();
+
+        return task_done(finish_task(taskID, false, error_result()));
+    }
+
+    if (false == payment->SetTempValues(reason_)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid payment.").Flush();
+
+        return task_done(finish_task(taskID, false, error_result()));
+    }
+
+    DO_OPERATION_TASK_DONE(ConveyPayment, recipient, payment);
+
+    return task_done(finish_task(taskID, success, std::move(result)));
+}
+
+bool StateMachine::write_and_send_invoice_wrapper(
+    const TaskID taskID,
+    const SendInvoiceTask& task,
+    UniqueQueue<SendInvoiceTask>& retry) const
+{
+    const auto done = write_and_send_invoice(task, param);
+
+    if (TaskDone::retry == done) {
+        const auto numbersTaskID{next_task_id()};
+        start_task(
+            numbersTaskID,
+            bump_task(
+                get_task<GetTransactionNumbersTask>().Push(numbersTaskID, {})));
+        retry.Push(task, param);
+    }
+
+    return TaskDone::yes == done;
+}
+
+bool StateMachine::withdraw_voucher(
+    const TaskID taskID,
+    const WithdrawVoucherTask& param) const
+{
+    const auto& [accountID, recipient, value, memo, validFrom, validTo] = param;
+
+    OT_ASSERT(false == accountID->empty())
+    OT_ASSERT(false == recipient->empty())
+
+    if (0 >= value) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount.").Flush();
+
+        return task_done(finish_task(taskID, false, error_result()));
+    }
+
+    DO_OPERATION(
+        WithdrawVoucher, accountID, recipient, value, memo, validFrom, validTo);
+
+    return finish_task(taskID, success, std::move(result));
+}
+
+TaskDone StateMachine::send_voucher(
+    const TaskID taskID,
+    const SendVoucherTask& param) const
+{
+    const auto& [accountID, recipient, value, memo, validFrom, validTo] = param;
+
+    OT_ASSERT(false == accountID->empty())
+    OT_ASSERT(false == recipient->empty())
+
+    if (0 >= value) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount.").Flush();
+
+        return task_done(finish_task(taskID, false, error_result()));
+    }
+
+    OTString strVoucher = String::Factory();  // todo
+
+    // resume
+
+    std::unique_ptr<Cheque> voucher(new Cheque(strVoucher));
+
+    if (false == bool(voucher)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Failed to withdraw voucher.")
+            .Flush();
+
+        return task_done(finish_task(taskID, false, error_result()));
+    }
+
+    std::shared_ptr<OTPayment> payment{
+        client_.Factory().Payment(String::Factory(*voucher))};
+
+    if (false == bool(payment)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Failed to instantiate payment.")
+            .Flush();
+
+        return task_done(finish_task(taskID, false, error_result()));
+    }
+
+    if (false == payment->SetTempValues(reason_)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid payment.").Flush();
+
+        return task_done(finish_task(taskID, false, error_result()));
+    }
+
+    DO_OPERATION_TASK_DONE(ConveyPayment, recipient, payment);
+
+    return task_done(finish_task(taskID, success, std::move(result)));
+}
+
+bool StateMachine::send_voucher_wrapper(
+    const TaskID taskID,
+    const SendVoucherTask& task,
+    UniqueQueue<SendVoucherTask>& retry) const
+{
+    const auto done = send_voucher(task, param);
+
+    if (TaskDone::retry == done) {
+        const auto numbersTaskID{next_task_id()};
+        start_task(
+            numbersTaskID,
+            bump_task(
+                get_task<GetTransactionNumbersTask>().Push(numbersTaskID, {})));
+        retry.Push(task, param);
+    }
+
+    return TaskDone::yes == done;
+}
+
 }  // namespace opentxs::otx::client::implementation

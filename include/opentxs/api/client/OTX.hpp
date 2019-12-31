@@ -104,6 +104,36 @@ public:
     OPENTXS_EXPORT virtual std::size_t DepositCheques(
         const identifier::Nym& nymID,
         const std::set<OTIdentifier>& chequeIDs) const = 0;
+    /** Pay all available invoices for specified nym
+     *
+     *  \returns the number of invoices queued for payment
+     */
+    OPENTXS_EXPORT virtual std::size_t PayInvoices(
+        const identifier::Nym& nymID) const = 0;
+    /** Deposit the specified list of invoices for specified nym
+     *
+     *  If the list of invoiceIDs is empty, then all invoices will be paid
+     *
+     *  \returns the number of invoices queued for payment
+     */
+    OPENTXS_EXPORT virtual std::size_t PayInvoices(
+        const identifier::Nym& nymID,
+        const std::set<OTIdentifier>& invoiceIDs) const = 0;
+    /** Deposit all available vouchers for specified nym
+     *
+     *  \returns the number of vouchers queued for deposit
+     */
+    OPENTXS_EXPORT virtual std::size_t DepositVouchers(
+        const identifier::Nym& nymID) const = 0;
+    /** Deposit the specified list of vouchers for specified nym
+     *
+     *  If the list of voucherIDs is empty, then all vouchers will be deposited
+     *
+     *  \returns the number of vouchers queued for deposit
+     */
+    OPENTXS_EXPORT virtual std::size_t DepositVouchers(
+        const identifier::Nym& nymID,
+        const std::set<OTIdentifier>& voucherIDs) const = 0;
     OPENTXS_EXPORT virtual BackgroundTask DepositPayment(
         const identifier::Nym& recipientNymID,
         const std::shared_ptr<const OTPayment>& payment) const = 0;
@@ -241,6 +271,24 @@ public:
         const Time validFrom = Clock::now(),
         const Time validTo =
             (Clock::now() + std::chrono::hours(OT_CHEQUE_HOURS))) const = 0;
+    OPENTXS_EXPORT virtual BackgroundTask SendInvoice(
+        const identifier::Nym& localNymID,
+        const Identifier& sourceAccountID,
+        const Identifier& recipientContactID,
+        const Amount value,
+        const std::string& memo,
+        const Time validFrom = Clock::now(),
+        const Time validTo =
+            (Clock::now() + std::chrono::hours(OT_CHEQUE_HOURS))) const = 0;
+    OPENTXS_EXPORT virtual BackgroundTask SendVoucher(
+        const identifier::Nym& localNymID,
+        const Identifier& sourceAccountID,
+        const Identifier& recipientContactID,
+        const Amount value,
+        const std::string& memo,
+        const Time validFrom = Clock::now(),
+        const Time validTo =
+            (Clock::now() + std::chrono::hours(OT_CHEQUE_HOURS))) const = 0;
     OPENTXS_EXPORT virtual BackgroundTask SendExternalTransfer(
         const identifier::Nym& localNymID,
         const identifier::Server& serverID,
@@ -265,6 +313,14 @@ public:
         const Identifier& account,
         const Amount value) const = 0;
 #endif
+    OPENTXS_EXPORT virtual BackgroundTask WithdrawVoucher(
+        const identifier::Nym& nymID,
+        const Identifier& sourceAccountID,
+        const Identifier& recipientContactID,
+        const Amount value,
+        const std::string& memo,
+        const Time validFrom,
+        const Time validTo) const = 0;
 
     OPENTXS_EXPORT virtual ~OTX() = default;
 

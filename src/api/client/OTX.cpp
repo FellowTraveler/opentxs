@@ -522,7 +522,8 @@ OTX::BackgroundTask OTX::AcknowledgeOutbailment(
 
 OTX::BackgroundTask OTX::add_task(
     const TaskID taskID,
-    const ThreadStatus status) const
+    const ThreadStatus status,
+    Finish finish /*={}*/) const
 {
     Lock lock(task_status_lock_);
 
@@ -532,11 +533,11 @@ OTX::BackgroundTask OTX::add_task(
     [[maybe_unused]] auto [it, added] = task_status_.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(taskID),
-        std::forward_as_tuple(status, std::move(promise)));
+        std::forward_as_tuple(status, std::move(promise), finish));
 
     OT_ASSERT(added);
 
-    return {it->first, it->second.second.get_future()};
+    return {it->first, std::get<1>(it->second).get_future()};
 }
 
 void OTX::associate_message_id(const Identifier& messageID, const TaskID taskID)
@@ -864,6 +865,98 @@ std::size_t OTX::DepositCheques(
         OT_ASSERT(cheque)
 
         if (queue_cheque_deposit(nymID, *cheque)) { ++output; }
+    }
+
+    return {};
+}
+
+std::size_t OTX::PayInvoices(const identifier::Nym& nymID) const
+{
+    std::size_t output{0};
+    const auto workflows = client_.Workflow().List(
+        nymID,
+        proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE,
+        proto::PAYMENTWORKFLOWSTATE_CONVEYED);
+
+    for (const auto& id : workflows) {
+        const auto invoiceState =
+            client_.Workflow().LoadInvoiceByWorkflow(nymID, id, reason_);
+        const auto& [state, invoice] = invoiceState;
+
+        if (proto::PAYMENTWORKFLOWSTATE_CONVEYED != state) { continue; }
+
+        OT_ASSERT(invoice)
+
+        if (queue_cheque_deposit(nymID, *invoice)) { ++output; }
+    }
+
+    return output;
+}
+
+std::size_t OTX::PayInvoices(
+    const identifier::Nym& nymID,
+    const std::set<OTIdentifier>& invoiceIDs) const
+{
+    std::size_t output{0};
+
+    if (invoiceIDs.empty()) { return PayInvoices(nymID); }
+
+    for (const auto& id : invoiceIDs) {
+        const auto invoiceState =
+            client_.Workflow().LoadInvoice(nymID, id, reason_);
+        const auto& [state, invoice] = invoiceState;
+
+        if (proto::PAYMENTWORKFLOWSTATE_CONVEYED != state) { continue; }
+
+        OT_ASSERT(invoice)
+
+        if (queue_cheque_deposit(nymID, *invoice)) { ++output; }
+    }
+
+    return {};
+}
+
+std::size_t OTX::DepositVouchers(const identifier::Nym& nymID) const
+{
+    std::size_t output{0};
+    const auto workflows = client_.Workflow().List(
+        nymID,
+        proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER,
+        proto::PAYMENTWORKFLOWSTATE_CONVEYED);
+
+    for (const auto& id : workflows) {
+        const auto voucherState =
+            client_.Workflow().LoadVoucherByWorkflow(nymID, id, reason_);
+        const auto& [state, voucher] = voucherState;
+
+        if (proto::PAYMENTWORKFLOWSTATE_CONVEYED != state) { continue; }
+
+        OT_ASSERT(voucher)
+
+        if (queue_cheque_deposit(nymID, *voucher)) { ++output; }
+    }
+
+    return output;
+}
+
+std::size_t OTX::DepositVouchers(
+    const identifier::Nym& nymID,
+    const std::set<OTIdentifier>& voucherIDs) const
+{
+    std::size_t output{0};
+
+    if (voucherIDs.empty()) { return DepositVouchers(nymID); }
+
+    for (const auto& id : voucherIDs) {
+        const auto voucherState =
+            client_.Workflow().LoadVoucher(nymID, id, reason_);
+        const auto& [state, voucher] = voucherState;
+
+        if (proto::PAYMENTWORKFLOWSTATE_CONVEYED != state) { continue; }
+
+        OT_ASSERT(voucher)
+
+        if (queue_cheque_deposit(nymID, *voucher)) { ++output; }
     }
 
     return {};
@@ -2029,6 +2122,259 @@ OTX::BackgroundTask OTX::SendCheque(
     }
 }
 
+OTX::BackgroundTask OTX::SendInvoice(
+    const identifier::Nym& localNymID,
+    const Identifier& sourceAccountID,
+    const Identifier& recipientContactID,
+    const Amount value,
+    const std::string& memo,
+    const Time validFrom,
+    const Time validTo) const
+{
+    CHECK_ARGS(localNymID, sourceAccountID, recipientContactID)
+
+    start_introduction_server(localNymID);
+    auto serverID = identifier::Server::Factory();
+    auto recipientNymID = identifier::Nym::Factory();
+    const auto canMessage =
+        can_message(localNymID, recipientContactID, recipientNymID, serverID);
+    const bool closeEnough = (Messagability::READY == canMessage) ||
+                             (Messagability::UNREGISTERED == canMessage);
+
+    if (false == closeEnough) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Unable to message contact.")
+            .Flush();
+
+        return error_task();
+    }
+
+    if (0 >= value) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount.").Flush();
+
+        return error_task();
+    }
+
+    auto account = client_.Wallet().Account(sourceAccountID, reason_);
+
+    if (false == bool(account)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid account.").Flush();
+
+        return error_task();
+    }
+
+    try {
+        auto& queue = get_operations({localNymID, serverID});
+
+        return queue.StartTask<otx::client::SendInvoiceTask>(
+            {sourceAccountID, recipientNymID, value, memo, validFrom, validTo});
+    } catch (...) {
+
+        return error_task();
+    }
+}
+
+BackgroundTask OTX::WithdrawVoucher(
+    const identifier::Nym& nymID,
+    const Identifier& sourceAccountID,
+    const Identifier& recipientContactID,
+    const Amount value,
+    const std::string& memo,
+    const Time validFrom,
+    const Time validTo) const
+{
+    CHECK_ARGS(nymID, sourceAccountID, recipientContactID)
+
+    start_introduction_server(nymID);
+    auto serverID = identifier::Server::Factory();
+    auto recipientNymID = identifier::Nym::Factory();
+    const auto canMessage =
+        can_message(nymID, recipientContactID, recipientNymID, serverID);
+    const bool closeEnough = (Messagability::READY == canMessage) ||
+                             (Messagability::UNREGISTERED == canMessage);
+
+    if (false == closeEnough) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Unable to message contact.")
+            .Flush();
+
+        return error_task();
+    }
+
+    if (0 >= value) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount.").Flush();
+
+        return error_task();
+    }
+
+    auto account = client_.Wallet().Account(sourceAccountID, reason_);
+
+    if (false == bool(account)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid account.").Flush();
+
+        return error_task();
+    }
+
+    try {
+        auto& queue = get_operations({nymID, serverID});
+
+        return queue.StartTask<otx::client::WithdrawVoucherTask>(
+            {sourceAccountID, recipientNymID, value, memo, validFrom, validTo});
+    } catch (...) {
+
+        return error_task();
+    }
+}
+
+/*
+ In the api:client:OTX class you must have added a function that starts off the
+ process.
+
+ Chris Odom, [Dec 23, 2019 at 9:30:56 PM]:
+ yes I did
+
+ Justus Ranvier, [Dec 23, 2019 at 9:31:08 PM]:
+ That function returned a task id to the caller. That task id must be the one
+ that is finished when the voucher is successfuly sent, or failed to send.
+
+ Otherwise the caller will wait forever on a future whose value will never be
+ set
+
+ Chris Odom, [Dec 23, 2019 at 9:31:32 PM]:
+ okay
+
+ Justus Ranvier, [Dec 23, 2019 at 9:33:03 PM]:
+ But basically if you want a high level "withdraw and send voucher" function,
+ the first thing that has to happen is that you queue a withdraw voucher task.
+ When that task is complete then you can queue a send message task.
+
+ Chris Odom, [Dec 23, 2019 at 9:33:37 PM]:
+ So there is a function that does both of those things
+
+ just not in state machine?
+
+ Justus Ranvier, [Dec 23, 2019 at 9:34:30 PM]:
+ The ideal way to solve the problem would be if you could register a lambda with
+ a task that gets called when the finish_task executes. If that doesn't already
+ exist then it should be added.
+
+ Chris Odom, [Dec 23, 2019 at 9:35:36 PM]:
+ okay
+
+ Justus Ranvier, [Dec 23, 2019 at 9:37:03 PM]:
+ The OTX class is where you get the queue and push the withdraw_voucher task,
+ right? At that spot would be the place to call a function that sets a lambda on
+ that task. The lambda just needs the ability to look at the reply message and
+ then push to the send_message queue
+
+ Although this needs to be done carefully
+
+ The send_message task should reuse the task id from the withdraw_voucher task,
+ because that's the number the caller is looking at.
+ */
+
+OTX::BackgroundTask OTX::SendVoucher(
+    const identifier::Nym& localNymID,
+    const Identifier& sourceAccountID,
+    const Identifier& recipientContactID,
+    const Amount value,
+    const std::string& memo,
+    const Time validFrom,
+    const Time validTo) const
+{
+    CHECK_ARGS(localNymID, sourceAccountID, recipientContactID)
+
+    start_introduction_server(localNymID);
+
+    auto serverID = identifier::Server::Factory();
+    auto recipientNymID = identifier::Nym::Factory();
+    const auto canMessage =
+        can_message(localNymID, recipientContactID, recipientNymID, serverID);
+    const bool closeEnough = (Messagability::READY == canMessage) ||
+                             (Messagability::UNREGISTERED == canMessage);
+
+    if (false == closeEnough) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Unable to message contact.")
+            .Flush();
+
+        return error_task();
+    }
+
+    if (0 >= value) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount.").Flush();
+
+        return error_task();
+    }
+
+    auto account = client_.Wallet().Account(sourceAccountID, reason_);
+
+    if (false == bool(account)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid account.").Flush();
+
+        return error_task();
+    }
+    // ------------------------------------------------------------
+    //  using Finish = std::function<bool(const TaskID, const bool, Result&&)>;
+    auto finish = [&, this, workflowID, localNymID, reason_](
+                      const auto taskID,
+                      const auto success,
+                      const auto&& result) -> bool {
+        // lookup the workflow by id
+        //
+        // using Cheque = std::pair<proto::PaymentWorkflowState,
+        // std::unique_ptr<opentxs::Cheque>>;
+        //
+        const auto voucherState = client_.Workflow().LoadVoucherByWorkflow(
+            localNymID, workflowID, reason_);
+        const auto& [state, pVoucher] = voucherState;
+
+        // make sure the voucher was withdrawn successfully
+        //
+        if (false == bool(pVoucher) {
+            LogOutput(OT_METHOD)(__FUNCTION__)(
+                ": Voucher not found on workflow")
+                .Flush();
+
+            return error_task();
+        }
+
+        // construct a payment message (just like sending a cheque)
+        //
+
+
+        //resume
+
+        // call the appropriate function to queue the message (same function
+        // used for sending cheques, cash, or text messages)
+        //
+        try {
+            auto& queue = get_operations({localNymID, serverID});
+
+            return queue.StartTask<otx::client::SendVoucherTask>(
+                {sourceAccountID,
+                 recipientNymID,
+                 value,
+                 memo,
+                 validFrom,
+                 validTo});
+        } catch (...) {
+            return error_task();
+        }
+    };
+    // ------------------------------------------------------------
+    BackgroundTask bgTask{};
+    try {
+        auto& queue = get_operations({nymID, serverID});
+
+        auto& [taskID, future] = bgTask;
+        bgTask = queue.StartTask<otx::client::WithdrawVoucherTask>(
+            {sourceAccountID, recipientNymID, value, memo, validFrom, validTo},
+            finish(taskID));
+
+    } catch (...) {
+
+        return error_task();
+    }
+}
+
 OTX::BackgroundTask OTX::SendExternalTransfer(
     const identifier::Nym& localNymID,
     const identifier::Server& serverID,
@@ -2176,7 +2522,13 @@ void OTX::start_introduction_server(const identifier::Nym& nymID) const
     }
 }
 
-OTX::BackgroundTask OTX::start_task(const TaskID taskID, bool success) const
+// Justus: TODO
+// The OTX version of this function needs to be modified to accept the new
+// Finish parameter and store it in the same map where it's storing the task id.
+OTX::BackgroundTask OTX::start_task(
+    const TaskID taskID,
+    bool success,
+    Finish finish /*={}*/) const
 {
     if (0 == taskID) {
         LogTrace(OT_METHOD)(__FUNCTION__)(": Empty task ID").Flush();
@@ -2190,7 +2542,7 @@ OTX::BackgroundTask OTX::start_task(const TaskID taskID, bool success) const
         return error_task();
     }
 
-    return add_task(taskID, ThreadStatus::RUNNING);
+    return add_task(taskID, ThreadStatus::RUNNING, finish);
 }
 
 void OTX::StartIntroductionServer(const identifier::Nym& localNymID) const
@@ -2208,7 +2560,7 @@ ThreadStatus OTX::status(const Lock& lock, const TaskID taskID) const
 
     if (task_status_.end() == it) { return ThreadStatus::Error; }
 
-    const auto output = it->second.first;
+    const auto output = std::get<0>(it->second);
     const bool success = (ThreadStatus::FINISHED_SUCCESS == output);
     const bool failed = (ThreadStatus::FINISHED_FAILED == output);
     const bool finished = (success || failed);
@@ -2247,7 +2599,7 @@ void OTX::update_task(
 
     try {
         auto& row = task_status_.at(taskID);
-        auto& [state, promise] = row;
+        auto& [state, promise, future] = row;
         state = status;
         bool value{false};
         bool publish{false};
@@ -2439,7 +2791,7 @@ OTX::~OTX()
     for (const auto& future : futures) { future.get(); }
 
     for (auto& it : task_status_) {
-        auto& promise = it.second.second;
+        auto& promise = std::get<1>(it.second);
 
         try {
             promise.set_value(error_result());

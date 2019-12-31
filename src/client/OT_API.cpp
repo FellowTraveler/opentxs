@@ -3372,6 +3372,7 @@ CommandResult OT_API::withdrawVoucher(
     rLock lock(
         lock_callback_({context.Nym()->ID().str(), context.Server().str()}));
     auto reason = api_.Factory().PasswordPrompt("Withdrawing a voucher");
+
     CommandResult output{};
     auto& [requestNum, transactionNum, result] = output;
     auto& [status, reply] = result;
@@ -3390,11 +3391,6 @@ CommandResult OT_API::withdrawVoucher(
         return output;
     }
 
-    auto contractID = api_.Factory().UnitID();
-    auto strContractID = String::Factory();
-    contractID = account.get().GetInstrumentDefinitionID();
-    contractID->GetString(strContractID);
-
     const auto withdrawalNumber =
         context.NextTransactionNumber(MessageType::notarizeTransaction);
     const auto voucherNumber =
@@ -3408,6 +3404,7 @@ CommandResult OT_API::withdrawVoucher(
 
         return output;
     }
+    transactionNum = withdrawalNumber->Value();
 
     LogVerbose(OT_METHOD)(__FUNCTION__)(": Allocated transaction number ")(
         withdrawalNumber->Value())(" for withdrawal.")
@@ -3423,13 +3420,15 @@ CommandResult OT_API::withdrawVoucher(
     const auto VALID_FROM = Clock::now();
     const auto VALID_TO = VALID_FROM + std::chrono::hours(24 * 30 * 6);
     // The server only uses the memo, amount, and recipient from this cheque
-    // when it
-    // constructs the actual voucher.
-    auto theRequestVoucher{api_.Factory().Cheque(serverID, contractID)};
+    // when it constructs the actual voucher.
 
-    OT_ASSERT(false != bool(theRequestVoucher));
+    auto pRequestVoucher{api_.Factory().Cheque(
+        account.get().GetRealNotaryID(),
+        account.get().GetInstrumentDefinitionID())};
 
-    bool bIssueCheque = theRequestVoucher->IssueCheque(
+    OT_ASSERT(false != bool(pRequestVoucher));
+
+    bool bIssueCheque = pRequestVoucher->IssueCheque(
         amount,
         voucherNumber->Value(),
         VALID_FROM,
@@ -3476,9 +3475,10 @@ CommandResult OT_API::withdrawVoucher(
 
     item->SetAmount(amount);
     item->SetNote(String::Factory(" "));
-    theRequestVoucher->SignContract(nym, reason);
-    theRequestVoucher->SaveContract();
-    auto strVoucher = String::Factory(*theRequestVoucher);
+    pRequestVoucher->SetAsVoucher();
+    pRequestVoucher->SignContract(nym, reason);
+    pRequestVoucher->SaveContract();
+    auto strVoucher = String::Factory(*pRequestVoucher);
     item->SetAttachment(strVoucher);
     item->SignContract(nym, reason);
     item->SaveContract();
@@ -3515,6 +3515,22 @@ CommandResult OT_API::withdrawVoucher(
     }
 
     account.Release();
+
+    auto workflow = workflow_.CreateVoucher(*pRequestVoucher, reason);
+
+    if (workflow->empty()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Failed to create workflow.")
+            .Flush();
+
+        return nullptr;
+    }
+
+    LogVerbose(OT_METHOD)(__FUNCTION__)(": Started workflow ")(workflow)(".")
+        .Flush();
+
+    withdrawalNumber->SetSuccess(true);
+    voucherNumber->SetSuccess(true);
+
     result = context.SendMessage(
         dynamic_cast<const api::client::internal::Manager&>(api_),
         {},

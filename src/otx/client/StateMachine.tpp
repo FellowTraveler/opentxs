@@ -104,6 +104,16 @@ SendChequeTask& StateMachine::get_param()
     return param_.send_cheque_;
 }
 template <>
+SendInvoiceTask& StateMachine::get_param()
+{
+    return param_.send_invoice_;
+}
+template <>
+SendVoucherTask& StateMachine::get_param()
+{
+    return param_.send_voucher_;
+}
+template <>
 SendTransferTask& StateMachine::get_param()
 {
     return param_.send_transfer_;
@@ -115,7 +125,11 @@ WithdrawCashTask& StateMachine::get_param()
     return param_.withdraw_cash_;
 }
 #endif
-
+template <>
+WithdrawVoucherTask& StateMachine::get_param()
+{
+    return param_.withdraw_voucher_;
+}
 template <>
 const UniqueQueue<CheckNymTask>& StateMachine::get_task() const
 {
@@ -211,6 +225,16 @@ const UniqueQueue<SendChequeTask>& StateMachine::get_task() const
     return send_cheque_;
 }
 template <>
+const UniqueQueue<SendInvoiceTask>& StateMachine::get_task() const
+{
+    return send_invoice_;
+}
+template <>
+const UniqueQueue<SendVoucherTask>& StateMachine::get_task() const
+{
+    return send_voucher_;
+}
+template <>
 const UniqueQueue<SendTransferTask>& StateMachine::get_task() const
 {
     return send_transfer_;
@@ -222,6 +246,11 @@ const UniqueQueue<WithdrawCashTask>& StateMachine::get_task() const
     return withdraw_cash_;
 }
 #endif
+template <>
+const UniqueQueue<WithdrawVoucherTask>& StateMachine::get_task() const
+{
+    return withdraw_voucher_;
+}
 
 template <>
 bool StateMachine::load_contract<CheckNymTask>(const identifier::Nym& id) const
@@ -297,9 +326,15 @@ template StateMachine::BackgroundTask StateMachine::StartTask(
 template StateMachine::BackgroundTask StateMachine::StartTask(
     const SendChequeTask& params) const;
 template StateMachine::BackgroundTask StateMachine::StartTask(
+    const SendInvoiceTask& params) const;
+template StateMachine::BackgroundTask StateMachine::StartTask(
+    const SendVoucherTask& params) const;
+template StateMachine::BackgroundTask StateMachine::StartTask(
     const SendTransferTask& params) const;
 #if OT_CASH
 template StateMachine::BackgroundTask StateMachine::StartTask(
     const WithdrawCashTask& params) const;
 #endif  // OT_CASH
+template StateMachine::BackgroundTask StateMachine::StartTask(
+    const WithdrawVoucherTask& params) const;
 }  // namespace opentxs::otx::client::implementation

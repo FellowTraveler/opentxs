@@ -67,6 +67,19 @@ Cheque::Cheque(
     InitCheque();
 }
 
+OTString Cheque::GetVoucherIdText() const
+{
+    auto output = String::Factory();
+
+    output.Concatenate(m_RECIPIENT_NYM_ID->str().c_str());
+    output.Concatenate(m_REMITTER_NYM_ID->str().c_str());
+    output.Concatenate(NOTARY_ID->str().c_str());
+    output.Concatenate(m_strMemo->str().c_str());
+    output.Concatenate(LongToString(m_lTransactionNum).c_str());
+
+    return output;
+}
+
 void Cheque::UpdateContents([[maybe_unused]] const PasswordPrompt& reason)
 {
     auto INSTRUMENT_DEFINITION_ID =

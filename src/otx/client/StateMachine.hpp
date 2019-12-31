@@ -143,6 +143,7 @@ public:
     using Result = api::client::OTX::Result;
     using TaskID = api::client::OTX::TaskID;
     using Thread = std::function<void()>;
+    using Finish = std::function<bool(const TaskID, const bool, Result&&)>;
 
     union Params {
         CheckNymTask check_nym_;
@@ -167,10 +168,13 @@ public:
         RegisterAccountTask register_account_;
         RegisterNymTask register_nym_;
         SendChequeTask send_cheque_;
+        SendInvoiceTask send_invoice_;
+        SendVoucherTask send_voucher_;
         SendTransferTask send_transfer_;
 #if OT_CASH
         WithdrawCashTask withdraw_cash_;
 #endif
+        WithdrawVoucherTask withdraw_voucher_;
 
         Params() { memset(static_cast<void*>(this), 0, sizeof(Params)); }
         ~Params() {}
@@ -196,9 +200,12 @@ public:
         return StartTask(params);
     }
     template <typename T>
-    BackgroundTask StartTask(const T& params) const;
+    BackgroundTask StartTask(const T& params, Finish finish = {}) const;
     template <typename T>
-    BackgroundTask StartTask(const TaskID taskID, const T& params) const;
+    BackgroundTask StartTask(
+        const TaskID taskID,
+        const T& params,
+        Finish finish = {}) const;
 
     void Shutdown() { op_.Shutdown(); }
 
@@ -252,10 +259,13 @@ private:
     UniqueQueue<RegisterAccountTask> register_account_;
     UniqueQueue<RegisterNymTask> register_nym_;
     UniqueQueue<SendChequeTask> send_cheque_;
+    UniqueQueue<SendInvoiceTask> send_invoice_;
+    UniqueQueue<SendVoucherTask> send_voucher_;
     UniqueQueue<SendTransferTask> send_transfer_;
 #if OT_CASH
     UniqueQueue<WithdrawCashTask> withdraw_cash_;
 #endif  // OT_CASH
+    UniqueQueue<WithdrawVoucherTask> withdraw_voucher_;
     Params param_;
     TaskID task_id_{};
     std::atomic<int> counter_;
@@ -296,6 +306,11 @@ private:
         const TaskID taskID,
         const DepositPaymentTask& task,
         UniqueQueue<DepositPaymentTask>& retry) const;
+    bool pay_invoice(const TaskID taskID, const DepositPaymentTask& task) const;
+    bool pay_invoice_wrapper(
+        const TaskID taskID,
+        const DepositPaymentTask& task,
+        UniqueQueue<DepositPaymentTask>& retry) const;
 
 #if OT_CASH
     bool download_mint(const TaskID taskID, const DownloadMintTask& task) const;
@@ -318,7 +333,13 @@ private:
     bool finish_task(const TaskID taskID, const bool success, Result&& result)
         const override
     {
-        return parent_.finish_task(taskID, success, std::move(result));
+        auto finish = parent_.get_finish(taskID);
+
+        if (finish) {
+            finish(taskID, success, std::move(result));
+        } else {
+            return parent_.finish_task(taskID, success, std::move(result));
+        }
     }
     bool get_admin(const TaskID taskID, const OTPassword& password) const;
     UniqueQueue<OTNymID>& get_nym_fetch(
@@ -367,13 +388,18 @@ private:
     template <typename T, typename M>
     void scan_unknown(const M& map, int& next) const;
     bool send_transfer(const TaskID taskID, const SendTransferTask& task) const;
-    BackgroundTask start_task(const TaskID taskID, bool success) const override
+    BackgroundTask start_task(
+        const TaskID taskID,
+        bool success,
+        Finish finish = {}) const override
     {
-        return parent_.start_task(taskID, success);
+        return parent_.start_task(taskID, success, finish);
     }
 #if OT_CASH
     bool withdraw_cash(const TaskID taskID, const WithdrawCashTask& task) const;
 #endif  // OT_CASH
+    bool withdraw_voucher(const TaskID taskID, const WithdrawVoucherTask& task)
+        const;
     TaskDone write_and_send_cheque(
         const TaskID taskID,
         const SendChequeTask& task) const;
@@ -381,7 +407,19 @@ private:
         const TaskID taskID,
         const SendChequeTask& task,
         UniqueQueue<SendChequeTask>& retry) const;
-
+    TaskDone write_and_send_invoice(
+        const TaskID taskID,
+        const SendInvoiceTask& task) const;
+    bool write_and_send_invoice_wrapper(
+        const TaskID taskID,
+        const SendInvoiceTask& task,
+        UniqueQueue<SendInvoiceTask>& retry) const;
+    TaskDone send_voucher(const TaskID taskID, const SendVoucherTask& task)
+        const;
+    bool send_voucher_wrapper(
+        const TaskID taskID,
+        const SendVoucherTask& task,
+        UniqueQueue<SendVoucherTask>& retry) const;
     template <typename T>
     T& get_param();
     void increment_counter(const bool run);

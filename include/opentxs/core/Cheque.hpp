@@ -63,6 +63,8 @@ public:
         return ((m_bHasRemitter) ? m_REMITTER_ACCT_ID : m_SENDER_ACCT_ID);
     }
 
+    OTString GetVoucherIdText() const;
+
     // A cheque HAS NO "Recipient Asset Acct ID", since the recipient's account
     // (where he deposits
     // the cheque) is not known UNTIL the time of the deposit. It's certain not

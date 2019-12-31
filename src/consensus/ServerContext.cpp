@@ -6073,7 +6073,6 @@ void ServerContext::process_response_transaction_transfer(
     }
 }
 
-#if OT_CASH
 void ServerContext::process_response_transaction_withdrawal(
     const Lock& lock,
     const api::client::internal::Manager& client,
@@ -6082,7 +6081,14 @@ void ServerContext::process_response_transaction_withdrawal(
     OTTransaction& response,
     const PasswordPrompt& reason)
 {
+    auto empty = client.Factory().Message();
+
     OT_ASSERT(nym_);
+    OT_ASSERT(empty);
+
+    const auto& request = (pending_message_) ? *pending_message_ : *empty;
+    const auto& nym = *nym_;
+    const auto& nymID = nym.ID();
 
     // loop through the ALL items that make up this transaction and check to
     // see if a response to withdrawal.
@@ -6092,26 +6098,40 @@ void ServerContext::process_response_transaction_withdrawal(
     for (auto& it : response.GetItemList()) {
         auto pItem = it;
         OT_ASSERT((pItem));
+        // --------------------
         // VOUCHER WITHDRAWAL
         //
-        // If we got a reply to a voucher withdrawal, we'll just display the
-        // voucher on the screen (if the server sent us one...)
         if ((itemType::atWithdrawVoucher == pItem->GetType()) &&
             (Item::acknowledgement == pItem->GetStatus())) {
             auto strVoucher = String::Factory();
-            auto theVoucher = api_.Factory().Cheque();
+            auto pVoucher = api_.Factory().Cheque();
 
-            OT_ASSERT((theVoucher));
+            OT_ASSERT((pVoucher));
 
             pItem->GetAttachment(strVoucher);
 
-            if (theVoucher->LoadContractFromString(strVoucher)) {
+            if (pVoucher->LoadContractFromString(strVoucher)) {
                 LogVerbose(OT_METHOD)(__FUNCTION__)(
                     " Received voucher from server:  ")
                     .Flush();
                 LogVerbose(OT_METHOD)(__FUNCTION__)(strVoucher).Flush();
+
+                /** Record a withdraw voucher accept */
+                const bool workflowUpdated = client.Workflow().AcceptVoucher(
+                    nymID, *pVoucher, request, &reply, reason);
+
+                if (workflowUpdated) {
+                    LogDetail(OT_METHOD)(__FUNCTION__)(
+                        ": Successfully updated workflow.")
+                        .Flush();
+                } else {
+                    LogOutput(OT_METHOD)(__FUNCTION__)(
+                        ": Failed to update workflow.")
+                        .Flush();
+                }
             }
         }
+#if OT_CASH
         // CASH WITHDRAWAL
         //
         // If the item is a response to a cash withdrawal, we want to save
@@ -6122,11 +6142,13 @@ void ServerContext::process_response_transaction_withdrawal(
             (Item::acknowledgement == pItem->GetStatus())) {
             process_incoming_cash_withdrawal(*pItem, reason);
         }
+#endif
     }
 
     consume_issued(lock, response.GetTransactionNum());
 }
 
+#if OT_CASH
 bool ServerContext::process_incoming_cash(
     const Lock& lock,
     const api::client::internal::Manager& client,

@@ -32,6 +32,9 @@ public:
     bool DepositCheque(
         const Identifier& depositAccountID,
         const std::shared_ptr<Cheque> cheque) override;
+    bool PayInvoice(
+        const Identifier& depositAccountID,
+        const std::shared_ptr<Cheque> invoice) override;
     bool DownloadContract(const Identifier& ID, const ContractType type)
         override;
     Future GetFuture() override;
@@ -80,6 +83,13 @@ public:
     bool WithdrawCash(const Identifier& accountID, const Amount amount)
         override;
 #endif
+    bool WithdrawVoucher(
+        const Identifier& sourceAccountID,
+        const identifier::Nym& recipientNymID,
+        const Amount value,
+        const std::string& memo,
+        const Time validFrom,
+        const Time validTo) override;
 
     ~Operation() override;
 
@@ -141,6 +151,7 @@ private:
     proto::ContactSectionName claim_section_;
     proto::ContactItemType claim_type_;
     std::shared_ptr<Cheque> cheque_;
+    std::shared_ptr<Cheque> invoice_;
     std::shared_ptr<const OTPayment> payment_;
     std::shared_ptr<Ledger> inbox_;
     std::shared_ptr<Ledger> outbox_;
@@ -154,6 +165,8 @@ private:
     OTPeerReply peer_reply_;
     OTPeerRequest peer_request_;
     SetID set_id_;
+    Time validFrom_;
+    Time validTo_;
 
     static bool check_future(ServerContext::SendFuture& future);
     static void set_consensus_hash(
@@ -195,6 +208,7 @@ private:
         const Identifier& accountID);
     std::shared_ptr<Message> construct_get_transaction_numbers();
     std::shared_ptr<Message> construct_issue_unit_definition();
+    std::shared_ptr<Message> construct_pay_invoice();
     std::shared_ptr<Message> construct_process_inbox(
         const Identifier& accountID,
         const Ledger& payload,
@@ -226,6 +240,7 @@ private:
 #if OT_CASH
     std::shared_ptr<Message> construct_withdraw_cash();
 #endif
+    std::shared_ptr<Message> construct_withdraw_voucher();
     std::size_t download_account(
         const Identifier& accountID,
         ServerContext::DeliveryResult& lastResult);

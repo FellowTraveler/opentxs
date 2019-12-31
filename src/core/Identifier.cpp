@@ -254,6 +254,12 @@ OTIdentifier Identifier::Factory(const Contract& contract)
 
 OTIdentifier Identifier::Factory(const Cheque& cheque)
 {
+    if (check.hasRemitter()) {
+
+        return OTIdentifier(
+            implementation::Identifier::voucher_contents_to_identifier(cheque));
+    }
+
     return OTIdentifier(
         implementation::Identifier::contract_contents_to_identifier(cheque));
 }
@@ -400,6 +406,17 @@ Identifier* Identifier::contract_contents_to_identifier(const Contract& in)
     OT_ASSERT(nullptr != output);
 
     output->CalculateDigest(String::Factory(in)->Bytes());
+
+    return output;
+}
+
+Identifier* Identifier::voucher_contents_to_identifier(const Cheque& in)
+{
+    auto output = new Identifier();
+    OT_ASSERT(nullptr != output)
+
+    auto strVoucher = in.GetVoucherIdText();
+    output->CalculateDigest(strVoucher);
 
     return output;
 }

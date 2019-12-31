@@ -58,6 +58,7 @@ private:
     Identifier* clone() const final;
 
     static Identifier* contract_contents_to_identifier(const Contract& in);
+    static Identifier* voucher_contents_to_identifier(const Cheque& in);
     static proto::HashType IDToHashType(const ID type);
     static OTData path_to_data(
         const proto::ContactItemType type,

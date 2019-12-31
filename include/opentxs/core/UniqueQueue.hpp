@@ -107,6 +107,22 @@ public:
         return false;
     }
 
+    bool Push(const Lock& lock, const Key key, const T& in) const
+    {
+        OT_ASSERT(0 < key)
+
+        if (0 == set_.count(in)) {
+            queue_.push_front({key, in});
+            set_.emplace(in);
+
+            OT_ASSERT(set_.size() == queue_.size())
+
+            return true;
+        }
+
+        return false;
+    }
+
     bool Pop(Key& key, T& out) const
     {
         Lock lock(lock_);
@@ -142,8 +158,10 @@ public:
     {
     }
 
-private:
+public:
     mutable std::mutex lock_;
+
+private:
     mutable std::deque<std::pair<Key, T>> queue_;
     mutable std::set<T> set_;
 

@@ -62,6 +62,38 @@ api::client::Workflow* Factory::Workflow(
 
 namespace opentxs::api::client
 {
+
+std::set<transactionType> requestTxns{
+    transactionType::processNymbox,
+    transactionType::processInbox,
+    transactionType::transfer,
+    transactionType::deposit,
+    transactionType::withdrawal,
+    transactionType::marketOffer,
+    transactionType::paymentPlan,
+    transactionType::smartContract,
+    transactionType::cancelCronItem,
+    transactionType::exchangeBasket,
+    transactionType::payDividend,
+};
+
+std::set<transactionType> replyTxns{
+    transactionType::atProcessNymbox,
+    transactionType::atProcessInbox,
+    transactionType::atTransfer,
+    transactionType::atDeposit,
+    transactionType::atWithdrawal,
+    transactionType::atMarketOffer,
+    transactionType::atPaymentPlan,
+    transactionType::atSmartContract,
+    transactionType::atCancelCronItem,
+    transactionType::atExchangeBasket,
+    transactionType::atPayDividend,
+};
+
+std::set<MessageType> msgTxns{MessageType::notarizeTransaction,
+                              MessageType::processInbox};
+
 #if OT_CASH
 bool Workflow::ContainsCash(const proto::PaymentWorkflow& workflow)
 {
@@ -75,6 +107,8 @@ bool Workflow::ContainsCash(const proto::PaymentWorkflow& workflow)
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGTRANSFER:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGTRANSFER:
         case proto::PAYMENTWORKFLOWTYPE_INTERNALTRANSFER:
@@ -92,11 +126,88 @@ bool Workflow::ContainsCheque(const proto::PaymentWorkflow& workflow)
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER: {
+
+            return true;
+        }
+        case proto::PAYMENTWORKFLOWTYPE_ERROR:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGTRANSFER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGTRANSFER:
+        case proto::PAYMENTWORKFLOWTYPE_INTERNALTRANSFER:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCASH:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGCASH:
+        default: {
+        }
+    }
+
+    return false;
+}
+
+bool Workflow::ContainsOnlyCheque(const proto::PaymentWorkflow& workflow)
+{
+    switch (workflow.type()) {
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE: {
+
+            return true;
+        }
+        case proto::PAYMENTWORKFLOWTYPE_ERROR:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGTRANSFER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGTRANSFER:
+        case proto::PAYMENTWORKFLOWTYPE_INTERNALTRANSFER:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCASH:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGCASH:
+        default: {
+        }
+    }
+
+    return false;
+}
+
+bool Workflow::ContainsOnlyInvoice(const proto::PaymentWorkflow& workflow)
+{
+    switch (workflow.type()) {
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE: {
 
             return true;
         }
         case proto::PAYMENTWORKFLOWTYPE_ERROR:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGTRANSFER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGTRANSFER:
+        case proto::PAYMENTWORKFLOWTYPE_INTERNALTRANSFER:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCASH:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGCASH:
+        default: {
+        }
+    }
+
+    return false;
+}
+
+bool Workflow::ContainsOnlyVoucher(const proto::PaymentWorkflow& workflow)
+{
+    switch (workflow.type()) {
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER: {
+
+            return true;
+        }
+        case proto::PAYMENTWORKFLOWTYPE_ERROR:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGTRANSFER:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGTRANSFER:
         case proto::PAYMENTWORKFLOWTYPE_INTERNALTRANSFER:
@@ -123,6 +234,8 @@ bool Workflow::ContainsTransfer(const proto::PaymentWorkflow& workflow)
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCASH:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGCASH:
         default: {
@@ -130,6 +243,16 @@ bool Workflow::ContainsTransfer(const proto::PaymentWorkflow& workflow)
     }
 
     return false;
+}
+
+std::string Workflow::ExtractInvoice(const proto::PaymentWorkflow& workflow)
+{
+    return ExtractCheque(workflow);
+}
+
+std::string Workflow::ExtractVoucher(const proto::PaymentWorkflow& workflow)
+{
+    return ExtractCheque(workflow);
 }
 
 std::string Workflow::ExtractCheque(const proto::PaymentWorkflow& workflow)
@@ -193,6 +316,20 @@ std::string Workflow::ExtractTransfer(const proto::PaymentWorkflow& workflow)
     return workflow.source(0).item();
 }
 
+Workflow::Cheque Workflow::InstantiateInvoice(
+    const api::internal::Core& core,
+    const proto::PaymentWorkflow& workflow)
+{
+    return InstantiateCheque(core, workflow);
+}
+
+Workflow::Cheque Workflow::InstantiateVoucher(
+    const api::internal::Core& core,
+    const proto::PaymentWorkflow& workflow)
+{
+    return InstantiateCheque(core, workflow);
+}
+
 Workflow::Cheque Workflow::InstantiateCheque(
     const api::internal::Core& core,
     const proto::PaymentWorkflow& workflow)
@@ -203,6 +340,8 @@ Workflow::Cheque Workflow::InstantiateCheque(
     switch (workflow.type()) {
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE: {
             cheque.reset(core.Factory().Cheque().release());
@@ -275,6 +414,8 @@ Workflow::Purse Workflow::InstantiatePurse(
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGTRANSFER:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGTRANSFER:
         case proto::PAYMENTWORKFLOWTYPE_INTERNALTRANSFER:
@@ -322,6 +463,8 @@ Workflow::Transfer Workflow::InstantiateTransfer(
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCASH:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGCASH:
         default: {
@@ -344,6 +487,8 @@ OTIdentifier Workflow::UUID(
     switch (workflow.type()) {
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER:
         case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
         case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE: {
             [[maybe_unused]] auto [state, cheque] =
@@ -412,6 +557,8 @@ const Workflow::VersionMap Workflow::versions_{
     {proto::PAYMENTWORKFLOWTYPE_INTERNALTRANSFER, {2, 1, 2}},
     {proto::PAYMENTWORKFLOWTYPE_OUTGOINGCASH, {3, 1, 3}},
     {proto::PAYMENTWORKFLOWTYPE_INCOMINGCASH, {3, 1, 3}},
+    {proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER, {3, 1, 4}},
+    {proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER, {3, 1, 4}},
 };
 
 Workflow::Workflow(
@@ -1044,7 +1191,9 @@ bool Workflow::can_expire_cheque(
     bool correctState{false};
 
     switch (workflow.type()) {
-        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE: {
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER: {
             switch (workflow.state()) {
                 case proto::PAYMENTWORKFLOWSTATE_UNSENT:
                 case proto::PAYMENTWORKFLOWSTATE_CONVEYED: {
@@ -1054,7 +1203,9 @@ bool Workflow::can_expire_cheque(
                 }
             }
         } break;
-        case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE: {
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE:
+        case proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER: {
             switch (workflow.state()) {
                 case proto::PAYMENTWORKFLOWSTATE_CONVEYED: {
                     correctState = true;
@@ -1097,6 +1248,66 @@ bool Workflow::can_finish_cheque(const proto::PaymentWorkflow& workflow)
     return true;
 }
 
+// Works for Incoming and Internal transfer workflows.
+bool Workflow::AcceptTransfer(
+    const identifier::Nym& nymID,
+    const identifier::Server& notaryID,
+    const OTTransaction& pending,
+    const Message& reply) const
+{
+    const auto transfer = extract_transfer_from_pending(pending);
+
+    if (false == bool(transfer)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid transaction").Flush();
+
+        return false;
+    }
+
+    const auto senderNymID = transfer->GetNymID().str();
+    const auto recipientNymID = pending.GetNymID().str();
+    const auto& accountID = pending.GetPurportedAccountID();
+
+    if (pending.GetNymID() != nymID) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid recipient").Flush();
+
+        return false;
+    }
+
+    const bool isInternal = (0 == senderNymID.compare(recipientNymID));
+
+    // Ignore this event for internal transfers.
+    if (isInternal) { return true; }
+
+    const std::set<proto::PaymentWorkflowType> type{
+        proto::PAYMENTWORKFLOWTYPE_INCOMINGTRANSFER};
+    Lock global(lock_);
+    const auto workflow = get_workflow(global, type, nymID.str(), *transfer);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this transfer does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_accept_transfer(*workflow)) { return false; }
+
+    return add_transfer_event(
+        lock,
+        nymID.str(),
+        senderNymID,
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_COMPLETED,
+        proto::PAYMENTEVENTTYPE_ACCEPT,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGTRANSFER).event_,
+        reply,
+        accountID.str(),
+        true);
+}
+
 bool Workflow::CancelCheque(
     const opentxs::Cheque& cheque,
     const Message& request,
@@ -1133,13 +1344,404 @@ bool Workflow::CancelCheque(
         reply);
 }
 
+bool Workflow::CancelVoucher(
+    const opentxs::Cheque& voucher,
+    const Message& request,
+    const Message* reply) const
+{
+    if (false == isVoucher(voucher)) { return false; }
+
+    const auto remitterNymId = voucher.GetRemitterNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER},
+        remitterNymId,
+        voucher);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_cancel_cheque(*workflow)) { return false; }
+
+    return add_cheque_event(
+        lock,
+        remitterNymId,
+        "",
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_CANCELLED,
+        proto::PAYMENTEVENTTYPE_CANCEL,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER).event_,
+        request,
+        reply);
+}
+
+bool Workflow::CancelInvoice(
+    const opentxs::Cheque& invoice,
+    const Message& request,
+    const Message* reply) const
+{
+    if (false == isInvoice(invoice)) { return false; }
+
+    const auto nymID = invoice.GetSenderNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global, {proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE}, nymID, invoice);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_cancel_cheque(*workflow)) { return false; }
+
+    return add_cheque_event(
+        lock,
+        nymID,
+        "",
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_CANCELLED,
+        proto::PAYMENTEVENTTYPE_CANCEL,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE).event_,
+        request,
+        reply);
+}
+
+std::unique_ptr<Message> Workflow::extract_message(
+    const Armored& armored,
+    const identity::Nym* signer /*=nullptr*/)
+{
+    if (false == armored.Exists()) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(": Error: empty input").Flush();
+
+        return {};
+    }
+    auto message = api_.Factory().Message();
+    OT_ASSERT(message)
+
+    auto serialized = String::Factory();
+    armored.GetString(serialized);
+
+    if (false == message->LoadContractFromString(serialized)) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: Failed to instantiate message")
+            .Flush();
+
+        return {};
+    }
+
+    if ((nullptr != signer) && false == message->VerifySignature(signer)) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(": Error: Invalid signature")
+            .Flush();
+
+        return {};
+    }
+
+    return message;
+}
+
+std::unique_ptr<Ledger> Workflow::extract_ledger(
+    const Armored& armored,
+    const identifier::Nym& ownerNymId,
+    const Identifier& accountId,
+    const identifier::Server& notaryId,
+    const identity::Nym* signerNym /*=nullptr*/
+    ) const
+{
+    if (false == armored.Exists()) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(": Error: empty input").Flush();
+
+        return {};
+    }
+    auto output_ledger = api_.Factory().Ledger(ownerNymId, accountID, notaryId);
+    OT_ASSERT(output_ledger);
+
+    auto serialized = String::Factory();
+    armored.GetString(serialized);
+
+    if (false == output_ledger->LoadLedgerFromString(serialized)) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: Failed to instantiate ledger")
+            .Flush();
+
+        return {};
+    }
+
+    if ((nullptr != signerNym) &&
+        false == output_ledger->VerifySignature(signer)) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(": Error: Invalid signature")
+            .Flush();
+
+        return {};
+    }
+
+    return output_ledger;
+}
+
+bool Workflow::extract_ledgers_from_messages(
+    const Message& request,
+    const Message* pReply,
+    std::unique_ptr<Ledger>& requestLedger,
+    std::unique_ptr<Ledger>& replyLedger,
+    const identity::Nym* signer /*=nullptr*/) const
+{
+    auto requestOwnerNymId = identifier::Nym::Factory(request.m_strNymID.Get());
+    auto requestAccountId = Factory::Identifier(request.m_strAcctID.Get());
+    auto requestNotaryId =
+        identifier::Server::Factory(request.m_strNotaryID.Get());
+
+    requestLedger.reset(extract_ledger(
+        request.m_ascPayload,
+        requestOwnerNymId,
+        requestAccountId,
+        requestNotaryId,
+        signer));
+
+    if (false == bool(requestLedger)) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: Failed to extract ledger from request message")
+            .Flush();
+
+        return false;
+    }
+
+    if (nullptr == pReply) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(": Error: Reply message is nullptr")
+            .Flush();
+        // We never received a reply to our message.
+        // Therefore it may or may not have been sent,
+        // and even if it was sent, it may not have been
+        // received. These are all necessary prerequisites
+        // BEFORE the OT notary can process the message to
+        // determine success/fails, and THAT must happen
+        // before it can process any transactions inside to
+        // determine success / false.
+
+        return false;
+    }
+    const Message& reply = *pReply;
+
+    auto replyOwnerNymId = identifier::Nym::Factory(reply.m_strNymID.Get());
+    auto replyAccountId = Factory::Identifier(reply.m_strAcctID.Get());
+    auto replyNotaryId = identifier::Server::Factory(reply.m_strNotaryID.Get());
+
+    replyLedger.reset(extract_ledger(
+        reply.m_ascPayload,
+        replyOwnerNymId,
+        replyAccountId,
+        replyNotaryId,
+        signer));
+
+    if (false == bool(replyLedger)) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: Failed to extract ledger from reply message")
+            .Flush();
+
+        return false;
+    }
+
+    return true;
+}
+
+bool Workflow::extract_transaction_from_ledger(
+    const Ledger& ledger,
+    const std::set<transactionType>& required_types,
+    std::shared_ptr<OTTransaction>& transaction) const
+{
+    for (const auto type : required_types) {
+        transaction = ledger.GetTransaction(type);
+        if (true == bool(transaction)) { return true; }
+    }
+
+    return false;
+}
+
+bool Workflow::is_message_transaction(const Message& msg)
+{
+    const std::string strCommand(msg.m_strCommand.Get());
+    const MessageType msgType = Message::Type(strCommand);
+
+    for (const auto& currentType : msgTxns) {
+        if (currentType == msgType) { return true; }
+
+        const std::string strCurrentReply(Message::ReplyCommand(currentType));
+        const MessageType currentReplyType = Message::Type(strCurrentReply);
+        if (currentReplyType == msgType) { return true; }
+    }
+
+    return false;
+}
+
+bool Workflow::extract_status_from_messages(
+    const Message& request,
+    const Message* pReply,
+    const identity::Nym* signer /*=nullptr*/) const
+{
+    std::unique_ptr<Ledger> requestLedger;
+    std::unique_ptr<Ledger> replyLedger;
+    std::shared_ptr<OTTransaction> requestTransaction;
+    std::shared_ptr<OTTransaction> replyTransaction;
+    bool messageReplyReceived{false};
+    bool messageReplySuccess{false};
+    bool isTransaction{false};
+    bool txnReplyReceived{false};
+    bool txnReplySuccess{false};
+
+    return extract_status_from_messages(
+        request,
+        pReply,
+        requestLedger,
+        replyLedger,
+        requestTransaction,
+        replyTransaction,
+        messageReplyReceived,
+        messageReplySuccess,
+        isTransaction,
+        txnReplyReceived,
+        txnReplySuccess,
+        signer);
+}
+
+// You probably
+// care about "OVERALL SUCCESS" meaning, you
+// don't care if the message had to succeed,
+// or if a contained transaction ALSO had to
+// succeed. You just want to know, either way
+// if it atually succeeded or not, with a minimum
+// of fuss.
+bool Workflow::extract_status_from_messages(
+    const Message& request,
+    const Message* pReply,
+    std::unique_ptr<Ledger>& requestLedger,
+    std::unique_ptr<Ledger>& replyLedger,
+    std::shared_ptr<OTTransaction>& requestTransaction,
+    std::shared_ptr<OTTransaction>& replyTransaction,
+    bool& messageReplyReceived,
+    bool& messageReplySuccess,
+    bool& isTransaction,
+    bool& txnReplyReceived,
+    bool& txnReplySuccess,
+    const identity::Nym* signer /*=nullptr*/) const
+{
+    messageReplyReceived = false;
+    messageReplySuccess = false;
+    isTransaction = false;
+    txnReplyReceived = false;
+    txnReplySuccess = false;
+
+    if (nullptr == pReply) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: No reply message was passed into this function")
+            .Flush();
+
+        return false;
+    }
+    const Message& reply = pReply;
+    bool bUltimateReturnValue{false};
+
+    messageReplyReceived = true;
+    messageReplySuccess = reply.m_bSuccess;
+
+    const bool bIsMessageATransaction{is_message_transaction(request)};
+
+    if (false == bIsMessageATransaction) {
+        // Because it's not a txn and msg success is true;
+        if (messageReplySuccess) { bUltimateReturnValue = true; }
+        return bUltimateReturnValue;
+    }
+    isTransaction = true;
+    // --------------------------------------------
+    const bool bExtractedLedgers = extract_ledgers_from_messages(
+        request, pReply, requestLedger, replyLedger, signer);
+
+    if (false == bExtractedLedgers) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: Failed to extract ledgers from request/reply messages")
+            .Flush();
+
+        return false;
+    }
+    // --------------------------------------------
+    const bool bExtractedRequest = extract_transaction_from_ledger(
+        requestLedger, requestTxns, requestTransaction);
+
+    if (false == bExtractedRequest) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: Failed to extract request txn from message")
+            .Flush();
+
+        return false;
+    }
+    // --------------------------------------------
+    const bool bExtractedReply = extract_transaction_from_ledger(
+        replyLedger, replyTxns, replyTransaction);
+
+    if (false == bExtractedReply) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: Failed to extract reply txn from message")
+            .Flush();
+
+        return false;
+    }
+    txnReplyReceived = true;
+    // --------------------------------------------
+    txnReplySuccess = replyTransaction->GetSuccess();
+
+    if (txnReplySuccess) { bUltimateReturnValue = true; }
+
+    return bUltimateReturnValue;
+}
+
 bool Workflow::cheque_deposit_success(const Message* message)
 {
     if (nullptr == message) { return false; }
+    const bool bIsTransaction = is_message_transaction(*message);
 
-    // TODO this might not be sufficient
+    if (!bIsTransaction || false == message->m_bSuccess) { return false; }
 
-    return message->m_bSuccess;
+    const Message& reply = *message;
+
+    auto replyOwnerNymId = identifier::Nym::Factory(reply.m_strNymID.Get());
+    auto replyAccountId = Factory::Identifier(reply.m_strAcctID.Get());
+    auto replyNotaryId = identifier::Server::Factory(reply.m_strNotaryID.Get());
+
+    std::unique_ptr<Ledger> replyLedger = extract_ledger(
+        reply.m_ascPayload, replyOwnerNymId, replyAccountId, replyNotaryId);
+
+    if (false == bool(replyLedger)) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: Failed to extract reply ledger")
+            .Flush();
+
+        return false;
+    }
+    // --------------------------------------------
+    std::shared_ptr<OTTransaction> replyTransaction;
+
+    const bool bExtractedReply = extract_transaction_from_ledger(
+        replyLedger, replyTxns, replyTransaction);
+
+    if (false == bExtractedReply) {
+        LogNormal(OT_METHOD)(__FUNCTION__)(
+            ": Error: Failed to extract reply txn from message")
+            .Flush();
+
+        return false;
+    }
+
+    return replyTransaction->GetSuccess();
 }
 
 bool Workflow::ClearCheque(
@@ -1209,7 +1811,6 @@ bool Workflow::ClearCheque(
     }
 
     update_rpc(
-
         nymID,
         cheque->GetRecipientNymID().str(),
         cheque->SourceAccountID().str(),
@@ -1219,6 +1820,170 @@ bool Workflow::ClearCheque(
         0,
         time,
         cheque->GetMemo().Get());
+
+    return output;
+}
+
+bool Workflow::ClearInvoice(
+    const identifier::Nym& recipientNymID,
+    const OTTransaction& receipt) const
+{
+    if (recipientNymID.empty()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid invoice recipient")
+            .Flush();
+
+        return false;
+    }
+
+    auto invoice{api_.Factory().Cheque(receipt)};
+
+    if (false == bool(invoice)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Failed to load invoice from receipt.")
+            .Flush();
+
+        return false;
+    }
+
+    if (false == isInvoice(*invoice)) { return false; }
+
+    const auto nymID = invoice->GetSenderNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global, {proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE}, nymID, *invoice);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_accept_cheque(*workflow)) { return false; }
+
+    OT_ASSERT(1 == workflow->account_size())
+
+    const bool needNym = (0 == workflow->party_size());
+    const auto time = Clock::now();
+    const auto output = add_cheque_event(
+        lock,
+        nymID,
+        workflow->account(0),
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_ACCEPTED,
+        proto::PAYMENTEVENTTYPE_ACCEPT,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE).event_,
+        recipientNymID,
+        receipt,
+        time);
+
+    if (needNym) {
+        update_activity(
+            invoice->GetSenderNymID(),
+            recipientNymID,
+            Identifier::Factory(*invoice),
+            Identifier::Factory(workflow->id()),
+            StorageBox::OUTGOINGINVOICE,
+            extract_conveyed_time(*workflow));
+    }
+
+    update_rpc(
+        nymID,
+        invoice->GetRecipientNymID().str(),
+        invoice->SourceAccountID().str(),
+        proto::ACCOUNTEVENT_OUTGOINGINVOICE,
+        workflow->id(),
+        //-1 * invoice->GetAmount(),
+        invoice->GetAmount(),
+        0,
+        time,
+        invoice->GetMemo().Get());
+
+    return output;
+}
+
+bool Workflow::ClearVoucher(
+    const identifier::Nym& recipientNymID,
+    const OTTransaction& receipt) const
+{
+    if (recipientNymID.empty()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid voucher recipient")
+            .Flush();
+
+        return false;
+    }
+
+    auto voucher{api_.Factory().Cheque(receipt)};
+
+    if (false == bool(voucher)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Failed to load voucher from receipt.")
+            .Flush();
+
+        return false;
+    }
+
+    if (false == isVoucher(*voucher)) { return false; }
+
+    const auto remitterNymID = voucher->GetRemitterNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER},
+        remitterNymID,
+        *voucher);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_accept_cheque(*workflow)) { return false; }
+
+    OT_ASSERT(1 == workflow->account_size())
+
+    const bool needNym = (0 == workflow->party_size());
+    const auto time = Clock::now();
+    const auto output = add_cheque_event(
+        lock,
+        nymID,
+        workflow->account(0),
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_ACCEPTED,
+        proto::PAYMENTEVENTTYPE_ACCEPT,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER).event_,
+        recipientNymID,
+        receipt,
+        time);
+
+    if (needNym) {
+        update_activity(
+            remitterNymID,
+            recipientNymID,
+            Identifier::Factory(*voucher),
+            Identifier::Factory(workflow->id()),
+            StorageBox::OUTGOINGVOUCHER,
+            extract_conveyed_time(*workflow));
+    }
+
+    update_rpc(
+        nymID,
+        voucher->GetRecipientNymID().str(),
+        voucher->SourceAccountID().str(),
+        proto::ACCOUNTEVENT_OUTGOINGVOUCHER,
+        workflow->id(),
+        -1 * voucher->GetAmount(),
+        0,
+        time,
+        voucher->GetMemo().Get());
 
     return output;
 }
@@ -1611,7 +2376,10 @@ std::pair<OTIdentifier, proto::PaymentWorkflow> Workflow::create_cheque(
     } else {
         event.set_time(Clock::to_time_t(Clock::now()));
 
-        if (proto::PAYMENTWORKFLOWSTATE_UNSENT == workflowState) {
+        if (proto::PAYMENTWORKFLOWSTATE_INITIATED == workflowState) {
+            event.set_type(proto::PAYMENTEVENTTYPE_CREATE);
+            event.set_method(proto::TRANSPORTMETHOD_NONE);
+        } else if (proto::PAYMENTWORKFLOWSTATE_UNSENT == workflowState) {
             event.set_type(proto::PAYMENTEVENTTYPE_CREATE);
             event.set_method(proto::TRANSPORTMETHOD_NONE);
         } else if (proto::PAYMENTWORKFLOWSTATE_CONVEYED == workflowState) {
@@ -1847,7 +2615,6 @@ bool Workflow::DepositCheque(
 
     if (output && cheque_deposit_success(reply)) {
         update_rpc(
-
             receiver.str(),
             cheque.GetSenderNymID().str(),
             accountID.str(),
@@ -1857,6 +2624,115 @@ bool Workflow::DepositCheque(
             0,
             std::chrono::system_clock::from_time_t(reply->m_lTime),
             cheque.GetMemo().Get());
+    }
+
+    return output;
+}
+
+bool Workflow::PayInvoice(
+    const identifier::Nym& receiver,
+    const Identifier& accountID,
+    const opentxs::Cheque& invoice,
+    const Message& request,
+    const Message* reply) const
+{
+    if (false == isInvoice(invoice)) { return false; }
+
+    const auto nymID = receiver.str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global, {proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE}, nymID, invoice);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_deposit_cheque(*workflow)) { return false; }
+
+    const auto output = add_cheque_event(
+        lock,
+        nymID,
+        invoice.GetSenderNymID().str(),
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_COMPLETED,
+        proto::PAYMENTEVENTTYPE_ACCEPT,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE).event_,
+        request,
+        reply,
+        accountID.str());
+
+    if (output && cheque_deposit_success(reply)) {
+        update_rpc(
+            receiver.str(),
+            invoice.GetSenderNymID().str(),
+            accountID.str(),
+            proto::ACCOUNTEVENT_INCOMINGINVOICE,
+            workflow->id(),
+            invoice.GetAmount(),
+            0,
+            std::chrono::system_clock::from_time_t(reply->m_lTime),
+            invoice.GetMemo().Get());
+    }
+
+    return output;
+}
+
+bool Workflow::DepositVoucher(
+    const identifier::Nym& receiver,
+    const Identifier& accountID,
+    const opentxs::Cheque& voucher,
+    const Message& request,
+    const Message* reply) const
+{
+    if (false == isVoucher(voucher)) { return false; }
+
+    const auto nymID = receiver.str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global, {proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER}, nymID, voucher);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_deposit_cheque(*workflow)) { return false; }
+
+    const auto output = add_cheque_event(
+        lock,
+        nymID,
+        voucher.GetRemitterNymID().str(),
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_COMPLETED,
+        proto::PAYMENTEVENTTYPE_ACCEPT,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER).event_,
+        request,
+        reply,
+        accountID.str());
+
+    if (output && cheque_deposit_success(reply)) {
+        update_rpc(
+
+            receiver.str(),
+            voucher.GetRemitterNymID().str(),
+            accountID.str(),
+            proto::ACCOUNTEVENT_INCOMINGVOUCHER,
+            workflow->id(),
+            voucher.GetAmount(),
+            0,
+            std::chrono::system_clock::from_time_t(reply->m_lTime),
+            voucher.GetMemo().Get());
     }
 
     return output;
@@ -1894,6 +2770,70 @@ bool Workflow::ExpireCheque(
     return save_workflow(nymID, cheque.GetSenderAcctID().str(), *workflow);
 }
 
+bool Workflow::ExpireInvoice(
+    const identifier::Nym& nym,
+    const opentxs::Cheque& invoice) const
+{
+    if (false == isInvoice(invoice)) { return false; }
+
+    const auto nymID = nym.str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE,
+         proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE},
+        nymID,
+        invoice);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_expire_cheque(invoice, *workflow)) { return false; }
+
+    workflow->set_state(proto::PAYMENTWORKFLOWSTATE_EXPIRED);
+
+    return save_workflow(nymID, cheque.GetSenderAcctID().str(), *workflow);
+}
+
+bool Workflow::ExpireVoucher(
+    const identifier::Nym& nym,
+    const opentxs::Cheque& voucher) const
+{
+    if (false == isVoucher(voucher)) { return false; }
+
+    const auto nymID = nym.str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER,
+         proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER},
+        nymID,
+        voucher);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_expire_cheque(voucher, *workflow)) { return false; }
+
+    workflow->set_state(proto::PAYMENTWORKFLOWSTATE_EXPIRED);
+
+    return save_workflow(nymID, voucher.GetSenderAcctID().str(), *workflow);
+}
+
 bool Workflow::ExportCheque(const opentxs::Cheque& cheque) const
 {
     if (false == isCheque(cheque)) { return false; }
@@ -1924,6 +2864,70 @@ bool Workflow::ExportCheque(const opentxs::Cheque& cheque) const
     event.set_success(true);
 
     return save_workflow(nymID, cheque.GetSenderAcctID().str(), *workflow);
+}
+
+bool Workflow::ExportInvoice(const opentxs::Cheque& invoice) const
+{
+    if (false == isInvoice(invoice)) { return false; }
+
+    const auto nymID = invoice.GetSenderNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(global, {}, nymID, invoice);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_convey_cheque(*workflow)) { return false; }
+
+    workflow->set_state(proto::PAYMENTWORKFLOWSTATE_CONVEYED);
+    auto& event = *(workflow->add_event());
+    event.set_version(
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE).event_);
+    event.set_type(proto::PAYMENTEVENTTYPE_CONVEY);
+    event.set_time(Clock::to_time_t(Clock::now()));
+    event.set_method(proto::TRANSPORTMETHOD_OOB);
+    event.set_success(true);
+
+    return save_workflow(nymID, invoice.GetSenderAcctID().str(), *workflow);
+}
+
+bool Workflow::ExportVoucher(const opentxs::Cheque& voucher) const
+{
+    if (false == isVoucher(voucher)) { return false; }
+
+    const auto nymID = voucher.GetRemitterNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(global, {}, nymID, voucher);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_convey_cheque(*workflow)) { return false; }
+
+    workflow->set_state(proto::PAYMENTWORKFLOWSTATE_CONVEYED);
+    auto& event = *(workflow->add_event());
+    event.set_version(
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER).event_);
+    event.set_type(proto::PAYMENTEVENTTYPE_CONVEY);
+    event.set_time(Clock::to_time_t(Clock::now()));
+    event.set_method(proto::TRANSPORTMETHOD_OOB);
+    event.set_success(true);
+
+    return save_workflow(nymID, voucher.GetSenderAcctID().str(), *workflow);
 }
 
 std::chrono::time_point<std::chrono::system_clock> Workflow::
@@ -2137,6 +3141,81 @@ bool Workflow::FinishCheque(
         reply);
 }
 
+bool Workflow::FinishInvoice(
+    const opentxs::Cheque& invoice,
+    const Message& request,
+    const Message* reply) const
+{
+    if (false == isInvoice(invoice)) { return false; }
+
+    const auto nymID = invoice.GetSenderNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global, {proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE}, nymID, invoice);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_finish_cheque(*workflow)) { return false; }
+
+    return add_cheque_event(
+        lock,
+        nymID,
+        "",
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_COMPLETED,
+        proto::PAYMENTEVENTTYPE_COMPLETE,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE).event_,
+        request,
+        reply);
+}
+
+bool Workflow::FinishVoucher(
+    const opentxs::Cheque& voucher,
+    const Message& request,
+    const Message* reply) const
+{
+    if (false == isVoucher(voucher)) { return false; }
+
+    const auto remitterNymID = voucher.GetRemitterNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER},
+        remitterNymID,
+        voucher);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_finish_cheque(*workflow)) { return false; }
+
+    return add_cheque_event(
+        lock,
+        remitterNymID,
+        "",
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_COMPLETED,
+        proto::PAYMENTEVENTTYPE_COMPLETE,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER).event_,
+        request,
+        reply);
+}
+
 template <typename T>
 std::shared_ptr<proto::PaymentWorkflow> Workflow::get_workflow(
     const Lock& global,
@@ -2211,14 +3290,80 @@ eLock Workflow::get_workflow_lock(Lock& global, const std::string& id) const
     return output;
 }
 
+OTIdentifier Workflow::ImportInvoice(
+    const identifier::Nym& importerNymID,
+    const opentxs::Cheque& invoice) const
+{
+    if (false == isInvoice(invoice)) { return Identifier::Factory(); }
+
+    if (false == validate_recipient(importerNymId, invoice)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Nym ")(importerNymId)(
+            " can not pay this invoice.")
+            .Flush();
+
+        return Identifier::Factory();
+    }
+
+    Lock global(lock_);
+    const auto existing = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE},
+        importerNymId.str(),
+        invoice);
+
+    if (existing) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice already exists.")
+            .Flush();
+
+        return Identifier::Factory(existing->id());
+    }
+
+    const std::string party = invoice.GetSenderNymID().str();
+    const auto [workflowID, workflow] = create_cheque(
+        global,
+        importerNymId.str(),
+        invoice,
+        proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE,
+        proto::PAYMENTWORKFLOWSTATE_CONVEYED,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE).workflow_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE).source_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE).event_,
+        party,
+        "");
+
+    if (false == workflowID->empty()) {
+        const auto time = extract_conveyed_time(workflow);
+        update_activity(
+            importerNymId,
+            invoice.GetSenderNymID(),
+            Identifier::Factory(invoice),
+            workflowID,
+            StorageBox::INCOMINGINVOICE,
+            time);
+        update_rpc(
+            importerNymId.str(),
+            invoice.GetSenderNymID().str(),
+            "",
+            proto::ACCOUNTEVENT_INCOMINGINVOICE,
+            workflowID->str(),
+            0,
+            invoice.GetAmount() * (-1),
+            time,
+            invoice.GetMemo().Get());
+    }
+
+    return workflowID;
+}
+
 OTIdentifier Workflow::ImportCheque(
-    const identifier::Nym& nymID,
+    const identifier::Nym& importerNymId,
     const opentxs::Cheque& cheque) const
 {
     if (false == isCheque(cheque)) { return Identifier::Factory(); }
 
-    if (false == validate_recipient(nymID, cheque)) {
-        LogOutput(OT_METHOD)(__FUNCTION__)(": Nym ")(nymID)(
+    if (false == validate_recipient(importerNymId, cheque)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Nym ")(importerNymId)(
             " can not deposit this cheque.")
             .Flush();
 
@@ -2229,12 +3374,12 @@ OTIdentifier Workflow::ImportCheque(
     const auto existing = get_workflow(
         global,
         {proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE},
-        nymID.str(),
+        importerNymId.str(),
         cheque);
 
     if (existing) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
-            ": Workflow for this cheque already exist.")
+            ": Workflow for this cheque already exists.")
             .Flush();
 
         return Identifier::Factory(existing->id());
@@ -2243,7 +3388,7 @@ OTIdentifier Workflow::ImportCheque(
     const std::string party = cheque.GetSenderNymID().str();
     const auto [workflowID, workflow] = create_cheque(
         global,
-        nymID.str(),
+        importerNymId.str(),
         cheque,
         proto::PAYMENTWORKFLOWTYPE_INCOMINGCHEQUE,
         proto::PAYMENTWORKFLOWSTATE_CONVEYED,
@@ -2256,15 +3401,14 @@ OTIdentifier Workflow::ImportCheque(
     if (false == workflowID->empty()) {
         const auto time = extract_conveyed_time(workflow);
         update_activity(
-            nymID,
+            importerNymId,
             cheque.GetSenderNymID(),
             Identifier::Factory(cheque),
             workflowID,
             StorageBox::INCOMINGCHEQUE,
             time);
         update_rpc(
-
-            nymID.str(),
+            importerNymId.str(),
             cheque.GetSenderNymID().str(),
             "",
             proto::ACCOUNTEVENT_INCOMINGCHEQUE,
@@ -2273,6 +3417,72 @@ OTIdentifier Workflow::ImportCheque(
             cheque.GetAmount(),
             time,
             cheque.GetMemo().Get());
+    }
+
+    return workflowID;
+}
+
+OTIdentifier Workflow::ImportVoucher(
+    const identifier::Nym& importerNymId,
+    const opentxs::Cheque& voucher) const
+{
+    if (false == isVoucher(voucher)) { return Identifier::Factory(); }
+
+    if (false == validate_recipient(importerNymId, voucher)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Nym ")(importerNymId)(
+            " can not deposit this voucher.")
+            .Flush();
+
+        return Identifier::Factory();
+    }
+
+    Lock global(lock_);
+    const auto existing = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER},
+        importerNymId.str(),
+        voucher);
+
+    if (existing) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher already exists.")
+            .Flush();
+
+        return Identifier::Factory(existing->id());
+    }
+
+    const std::string party = voucher.GetRemitterNymID().str();
+    const auto [workflowID, workflow] = create_cheque(
+        global,
+        importerNymId.str(),
+        voucher,
+        proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER,
+        proto::PAYMENTWORKFLOWSTATE_CONVEYED,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER).workflow_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER).source_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER).event_,
+        party,
+        "");
+
+    if (false == workflowID->empty()) {
+        const auto time = extract_conveyed_time(workflow);
+        update_activity(
+            importerNymId,
+            voucher.GetRemitterNymID(),
+            Identifier::Factory(voucher),
+            workflowID,
+            StorageBox::INCOMINGVOUCHER,
+            time);
+        update_rpc(
+            importerNymId.str(),
+            voucher.GetRemitterNymID().str(),
+            "",
+            proto::ACCOUNTEVENT_INCOMINGVOUCHER,
+            workflowID->str(),
+            0,
+            voucher.GetAmount(),
+            time,
+            voucher.GetMemo().Get());
     }
 
     return workflowID;
@@ -2297,12 +3507,68 @@ bool Workflow::isCheque(const opentxs::Cheque& cheque)
 
     if (0 == cheque.GetAmount()) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
-            ": Provided instrument is a cancellation")
+            ": Provided instrument is a cancelation")
             .Flush();
 
         return false;
     }
 
+    return true;
+}
+
+bool Workflow::isInvoice(const opentxs::Cheque& invoice)
+{
+    if (invoice.HasRemitter()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Provided instrument is a voucher")
+            .Flush();
+
+        return false;
+    }
+
+    if (0 < invoice.GetAmount()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Provided instrument is not an invoice")
+            .Flush();
+
+        return false;
+    }
+
+    if (0 == invoice.GetAmount()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Provided instrument is a cancelation")
+            .Flush();
+
+        return false;
+    }
+
+    return true;
+}
+
+bool Workflow::isVoucher(
+    const opentxs::Cheque& voucher,
+    const Identifier& depositorNymID)
+{
+    if (0 > voucher.GetAmount()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Provided instrument is an invoice, not a voucher")
+            .Flush();
+
+        return false;
+    }
+
+    if (false == voucher.HasRemitter()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Provided instrument is not a voucher")
+            .Flush();
+
+        return false;
+    } else if (voucher.GetRemitterNymID() == depositorNymID) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Provided instrument is a cancelation")
+            .Flush();
+
+        return false;
+    }
     return true;
 }
 
@@ -2385,6 +3651,90 @@ Workflow::Cheque Workflow::LoadChequeByWorkflow(
     }
 
     return InstantiateCheque(api_, *workflow);
+}
+
+Workflow::Cheque Workflow::LoadInvoice(
+    const identifier::Nym& nymID,
+    const Identifier& invoiceID) const
+{
+    auto workflow = get_workflow_by_source(
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE,
+         proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE},
+        nymID.str(),
+        invoiceID.str());
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice does not exist.")
+            .Flush();
+
+        return {};
+    }
+
+    return InstantiateInvoice(api_, *workflow);
+}
+
+Workflow::Cheque Workflow::LoadInvoiceByWorkflow(
+    const identifier::Nym& nymID,
+    const Identifier& workflowID) const
+{
+    auto workflow = get_workflow_by_id(
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE,
+         proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE},
+        nymID.str(),
+        workflowID.str());
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice does not exist.")
+            .Flush();
+
+        return {};
+    }
+
+    return InstantiateInvoice(api_, *workflow);
+}
+
+Workflow::Cheque Workflow::LoadVoucher(
+    const identifier::Nym& nymID,
+    const Identifier& voucherID) const
+{
+    auto workflow = get_workflow_by_source(
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER,
+         proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER},
+        nymID.str(),
+        voucherID.str());
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist.")
+            .Flush();
+
+        return {};
+    }
+
+    return InstantiateVoucher(api_, *workflow);
+}
+
+Workflow::Cheque Workflow::LoadVoucherByWorkflow(
+    const identifier::Nym& nymID,
+    const Identifier& workflowID) const
+{
+    auto workflow = get_workflow_by_id(
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER,
+         proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER},
+        nymID.str(),
+        workflowID.str());
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist.")
+            .Flush();
+
+        return {};
+    }
+
+    return InstantiateVoucher(api_, *workflow);
 }
 
 Workflow::Transfer Workflow::LoadTransfer(
@@ -2509,7 +3859,7 @@ OTIdentifier Workflow::ReceiveCheque(
 
     if (existing) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
-            ": Workflow for this cheque already exist.")
+            ": Workflow for this cheque already exists.")
             .Flush();
 
         return Identifier::Factory(existing->id());
@@ -2539,7 +3889,6 @@ OTIdentifier Workflow::ReceiveCheque(
             StorageBox::INCOMINGCHEQUE,
             time);
         update_rpc(
-
             nymID.str(),
             cheque.GetSenderNymID().str(),
             "",
@@ -2549,6 +3898,143 @@ OTIdentifier Workflow::ReceiveCheque(
             cheque.GetAmount(),
             time,
             cheque.GetMemo().Get());
+    }
+
+    return workflowID;
+}
+
+OTIdentifier Workflow::ReceiveInvoice(
+    const identifier::Nym& nymID,
+    const opentxs::Cheque& invoice,
+    const Message& message) const
+{
+    if (false == isInvoice(invoice)) { return Identifier::Factory(); }
+
+    if (false == validate_recipient(nymID, invoice)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Nym ")(nymID)(
+            " can not pay this invoice.")
+            .Flush();
+
+        return Identifier::Factory();
+    }
+
+    Lock global(lock_);
+    const auto existing = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE},
+        nymID.str(),
+        invoice);
+
+    if (existing) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice already exists.")
+            .Flush();
+
+        return Identifier::Factory(existing->id());
+    }
+
+    const std::string party = invoice.GetSenderNymID().str();
+    const auto [workflowID, workflow] = create_cheque(
+        global,
+        nymID.str(),
+        invoice,
+        proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE,
+        proto::PAYMENTWORKFLOWSTATE_CONVEYED,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE).workflow_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE).source_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGINVOICE).event_,
+        party,
+        "",
+        &message);
+
+    if (false == workflowID->empty()) {
+        const auto time = extract_conveyed_time(workflow);
+        update_activity(
+            nymID,
+            invoice.GetSenderNymID(),
+            Identifier::Factory(invoice),
+            workflowID,
+            StorageBox::INCOMINGINVOICE,
+            time);
+        update_rpc(
+            nymID.str(),
+            invoice.GetSenderNymID().str(),
+            "",
+            proto::ACCOUNTEVENT_INCOMINGINVOICE,
+            workflowID->str(),
+            0,
+            invoice.GetAmount() * (-1),
+            time,
+            invoice.GetMemo().Get());
+    }
+
+    return workflowID;
+}
+
+OTIdentifier Workflow::ReceiveVoucher(
+    const identifier::Nym& nymID,
+    const opentxs::Cheque& voucher,
+    const Message& message) const
+{
+    if (false == isVoucher(voucher)) { return Identifier::Factory(); }
+
+    if (false == validate_recipient(nymID, voucher)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Nym ")(nymID)(
+            " can not deposit this voucher.")
+            .Flush();
+
+        return Identifier::Factory();
+    }
+
+    Lock global(lock_);
+    const auto existing = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER},
+        nymID.str(),
+        voucher);
+
+    if (existing) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher already exist.")
+            .Flush();
+
+        return Identifier::Factory(existing->id());
+    }
+
+    const std::string party = voucher.GetRemitterNymID().str();
+    const auto [workflowID, workflow] = create_cheque(
+        global,
+        nymID.str(),
+        voucher,
+        proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER,
+        proto::PAYMENTWORKFLOWSTATE_CONVEYED,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER).workflow_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER).source_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_INCOMINGVOUCHER).event_,
+        party,
+        "",
+        &message);
+
+    if (false == workflowID->empty()) {
+        const auto time = extract_conveyed_time(workflow);
+        update_activity(
+            nymID,
+            voucher.GetRemitterNymID(),
+            Identifier::Factory(voucher),
+            workflowID,
+            StorageBox::INCOMINGVOUCHER,
+            time);
+        update_rpc(
+
+            nymID.str(),
+            voucher.GetRemitterNymID().str(),
+            "",
+            proto::ACCOUNTEVENT_INCOMINGVOUCHER,
+            workflowID->str(),
+            0,
+            voucher.GetAmount(),
+            time,
+            voucher.GetMemo().Get());
     }
 
     return workflowID;
@@ -2660,10 +4146,13 @@ bool Workflow::SendCheque(
 {
     if (false == isCheque(cheque)) { return false; }
 
-    const auto nymID = cheque.GetSenderNymID().str();
+    const auto senderNymId = cheque.GetSenderNymID().str();
     Lock global(lock_);
     const auto workflow = get_workflow(
-        global, {proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE}, nymID, cheque);
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE},
+        senderNymId,
+        cheque);
 
     if (false == bool(workflow)) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
@@ -2679,12 +4168,90 @@ bool Workflow::SendCheque(
 
     return add_cheque_event(
         lock,
-        nymID,
+        senderNymId,
         request.m_strNymID2->Get(),
         *workflow,
         proto::PAYMENTWORKFLOWSTATE_CONVEYED,
         proto::PAYMENTEVENTTYPE_CONVEY,
         versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE).event_,
+        request,
+        reply);
+}
+
+bool Workflow::SendInvoice(
+    const opentxs::Cheque& invoice,
+    const Message& request,
+    const Message* reply) const
+{
+    if (false == isInvoice(invoice)) { return false; }
+
+    const auto senderNymId = invoice.GetSenderNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE},
+        senderNymId,
+        invoice);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_convey_cheque(*workflow)) { return false; }
+
+    return add_cheque_event(
+        lock,
+        senderNymId,
+        request.m_strNymID2->Get(),
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_CONVEYED,
+        proto::PAYMENTEVENTTYPE_CONVEY,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE).event_,
+        request,
+        reply);
+}
+
+bool Workflow::SendVoucher(
+    const opentxs::Cheque& voucher,
+    const Message& request,
+    const Message* reply) const
+{
+    if (false == isVoucher(voucher)) { return false; }
+
+    const auto remitterNymId = voucher.GetRemitterNymID().str();
+    Lock global(lock_);
+    const auto workflow = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER},
+        remitterNymId,
+        voucher);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist.")
+            .Flush();
+
+        return false;
+    }
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    if (false == can_convey_cheque(*workflow)) { return false; }
+
+    return add_cheque_event(
+        lock,
+        remitterNymId,
+        request.m_strNymID2->Get(),
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_CONVEYED,
+        proto::PAYMENTEVENTTYPE_CONVEY,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER).event_,
         request,
         reply);
 }
@@ -2805,10 +4372,13 @@ OTIdentifier Workflow::WriteCheque(const opentxs::Cheque& cheque) const
         return Identifier::Factory();
     }
 
-    const auto nymID = cheque.GetSenderNymID().str();
+    const auto senderNymId = cheque.GetSenderNymID().str();
     Lock global(lock_);
     const auto existing = get_workflow(
-        global, {proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE}, nymID, cheque);
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE},
+        senderNymId,
+        cheque);
 
     if (existing) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
@@ -2835,7 +4405,7 @@ OTIdentifier Workflow::WriteCheque(const opentxs::Cheque& cheque) const
         cheque.HasRecipient() ? cheque.GetRecipientNymID().str() : "";
     const auto [workflowID, workflow] = create_cheque(
         global,
-        nymID,
+        senderNymId,
         cheque,
         proto::PAYMENTWORKFLOWTYPE_OUTGOINGCHEQUE,
         proto::PAYMENTWORKFLOWSTATE_UNSENT,
@@ -2861,8 +4431,7 @@ OTIdentifier Workflow::WriteCheque(const opentxs::Cheque& cheque) const
 
     if (false == workflowID->empty()) {
         update_rpc(
-
-            nymID,
+            senderNymId,
             cheque.GetRecipientNymID().str(),
             cheque.SourceAccountID().str(),
             proto::ACCOUNTEVENT_OUTGOINGCHEQUE,
@@ -2874,6 +4443,223 @@ OTIdentifier Workflow::WriteCheque(const opentxs::Cheque& cheque) const
     }
 
     return workflowID;
+}
+
+OTIdentifier Workflow::WriteInvoice(const opentxs::Cheque& invoice) const
+{
+    if (false == isInvoice(invoice)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Invalid item type on invoice object")
+            .Flush();
+
+        return Identifier::Factory();
+    }
+
+    const auto senderNymId = invoice.GetSenderNymID().str();
+    Lock global(lock_);
+    const auto existing = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE},
+        senderNymId,
+        invoice);
+
+    if (existing) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this invoice already exist.")
+            .Flush();
+
+        return Identifier::Factory(existing->id());
+    }
+
+    if (invoice.HasRecipient()) {
+        const auto& recipient = invoice.GetRecipientNymID();
+        const auto contactID = contact_.ContactID(recipient);
+
+        if (contactID->empty()) {
+            LogOutput(OT_METHOD)(__FUNCTION__)(
+                ": No contact exists for recipient nym ")(recipient)
+                .Flush();
+
+            return Identifier::Factory();
+        }
+    }
+
+    const std::string party =
+        invoice.HasRecipient() ? invoice.GetRecipientNymID().str() : "";
+    const auto [workflowID, workflow] = create_cheque(
+        global,
+        senderNymId,
+        invoice,
+        proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE,
+        proto::PAYMENTWORKFLOWSTATE_UNSENT,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE).workflow_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE).source_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGINVOICE).event_,
+        party,
+        invoice.GetSenderAcctID().str());
+    global.unlock();
+    const bool haveWorkflow = (false == workflowID->empty());
+    const auto time{
+        std::chrono::system_clock::from_time_t(workflow.event(0).time())};
+
+    if (haveWorkflow && invoice.HasRecipient()) {
+        update_activity(
+            invoice.GetSenderNymID(),
+            invoice.GetRecipientNymID(),
+            Identifier::Factory(invoice),
+            workflowID,
+            StorageBox::OUTGOINGINVOICE,
+            time);
+    }
+
+    if (false == workflowID->empty()) {
+        update_rpc(
+            senderNymId,
+            invoice.GetRecipientNymID().str(),
+            invoice.SourceAccountID().str(),
+            proto::ACCOUNTEVENT_OUTGOINGINVOICE,
+            workflowID->str(),
+            0,
+            invoice.GetAmount(),
+            time,
+            invoice.GetMemo().Get());
+    }
+
+    return workflowID;
+}
+
+OTIdentifier Workflow::CreateVoucher(const opentxs::Cheque& protoVoucher) const
+{
+    if (false == protoVoucher.hasRemitter()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Not a valid voucher.").Flush();
+
+        return Identifier::Factory();
+    }
+
+    const auto& remitterNymId = protoVoucher.GetRemitterNymID();
+    const auto& accountID = protoVoucher.GetSourceAcctID();
+    Lock global(lock_);
+    const auto existing = get_workflow(
+        global,
+        {proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER},
+        remitterNymId.str(),
+        protoVoucher);
+
+    if (existing) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher already exists.")
+            .Flush();
+
+        return Identifier::Factory(existing->id());
+    }
+
+    if (protoVoucher.HasRecipient()) {
+        const auto& recipient = protoVoucher.GetRecipientNymID();
+        const auto contactID = contact_.ContactID(recipient);
+
+        if (contactID->empty()) {
+            LogOutput(OT_METHOD)(__FUNCTION__)(
+                ": No contact exists for recipient nym ")(recipient)
+                .Flush();
+
+            return Identifier::Factory();
+        }
+    }
+
+    const std::string party = protoVoucher.HasRecipient()
+                                  ? protoVoucher.GetRecipientNymID().str()
+                                  : "";
+    const auto [workflowID, workflow] = create_cheque(
+        global,
+        remitterNymId.str(),
+        protoVoucher,
+        proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER,
+        proto::PAYMENTWORKFLOWSTATE_INITIATED,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER).workflow_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER).source_,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER).event_,
+        party,
+        accountID.str());
+    global.unlock();
+
+    const bool haveWorkflow = (false == workflowID->empty());
+    const auto time{
+        std::chrono::system_clock::from_time_t(workflow.event(0).time())};
+
+    if (haveWorkflow) {
+        if (protoVoucher.hasRecipient()) {
+            update_activity(
+                remitterNymId,
+                protoVoucher.GetRecipientNymID(),
+                Identifier::Factory(protoVoucher),
+                workflowID,
+                StorageBox::OUTGOINGVOUCHER,
+                time);
+        }
+
+        update_rpc(
+            remitterNymId.str(),
+            protoVoucher.GetRecipientNymID().str(),
+            protoVoucher.SourceAccountID().str(),
+            proto::ACCOUNTEVENT_OUTGOINGVOUCHER,
+            workflowID->str(),
+            0,
+            -1 * protoVoucher.GetAmount(),
+            time,
+            protoVoucher.GetMemo().Get());
+    }
+
+    return workflowID;
+}
+
+bool Workflow::AcceptVoucher(
+    const identifier::Nym& nymID,
+    const opentxs::Cheque& voucher,
+    const Message& request,
+    const Message* reply) const
+{
+    if (false == isVoucher(voucher)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid voucher").Flush();
+
+        return false;
+    }
+
+    if (nymID != voucher.GetRemitterNymID()) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Invalid voucher (NymID isn't the remitter)")
+            .Flush();
+
+        return false;
+    }
+
+    const std::set<proto::PaymentWorkflowType> type{
+        proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER};
+    Lock global(lock_);
+    const auto workflow = get_workflow(global, type, nymID.str(), voucher);
+
+    if (false == bool(workflow)) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(
+            ": Workflow for this voucher does not exist")
+            .Flush();
+
+        return false;
+    }
+
+    const std::string party =
+        voucher.HasRecipient() ? voucher.GetRecipientNymID().str() : "";
+
+    auto lock = get_workflow_lock(global, workflow->id());
+
+    return add_cheque_event(
+        lock,
+        nymID.str(),
+        party,
+        *workflow,
+        proto::PAYMENTWORKFLOWSTATE_UNSENT,
+        proto::PAYMENTEVENTTYPE_CREATE,
+        versions_.at(proto::PAYMENTWORKFLOWTYPE_OUTGOINGVOUCHER).event_,
+        request,
+        reply);
 }
 }  // namespace implementation
 }  // namespace opentxs::api::client
