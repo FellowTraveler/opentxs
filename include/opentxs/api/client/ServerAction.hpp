@@ -48,7 +48,7 @@ public:
         const identifier::Nym& localNymID,
         const identifier::Server& serverID,
         const identifier::Nym& targetNymID,
-        const Amount adjustment) const = 0;
+        const Amount& adjustment) const = 0;
     OPENTXS_EXPORT virtual Action CancelPaymentPlan(
         const PasswordPrompt& reason,
         const identifier::Nym& localNymID,
@@ -58,14 +58,14 @@ public:
         const PasswordPrompt& reason,
         const Identifier& assetAccountID,
         const Identifier& currencyAccountID,
-        const Amount scale,
-        const Amount increment,
-        const Amount quantity,
-        const Amount price,
+        const Amount& scale,
+        const Amount& increment,
+        const Amount& quantity,
+        const Amount& price,
         const bool selling,
         const std::chrono::seconds lifetime,
         const std::string& stopSign,
-        const Amount activationPrice) const = 0;
+        const Amount& activationPrice) const = 0;
     OPENTXS_EXPORT virtual Action DepositPaymentPlan(
         const PasswordPrompt& reason,
         const identifier::Nym& localNymID,
@@ -80,7 +80,7 @@ public:
         const identifier::Nym& localNymID,
         const identifier::Server& serverID,
         const Identifier& marketID,
-        const Amount depth) const = 0;
+        const Amount& depth) const = 0;
     OPENTXS_EXPORT virtual Action DownloadMarketRecentTrades(
         const PasswordPrompt& reason,
         const identifier::Nym& localNymID,
@@ -123,7 +123,7 @@ public:
         const identifier::UnitDefinition& instrumentDefinitionID,
         const Identifier& accountID,
         const std::string& memo,
-        const Amount amountPerShare) const = 0;
+        const Amount& amountPerShare) const = 0;
     OPENTXS_EXPORT virtual Action TriggerClause(
         const PasswordPrompt& reason,
         const identifier::Nym& localNymID,
@@ -146,7 +146,7 @@ public:
         const identifier::Server& serverID,
         const Identifier& accountID,
         const identifier::Nym& recipientNymID,
-        const Amount amount,
+        const Amount& amount,
         const std::string& memo) const = 0;
 
     OPENTXS_EXPORT virtual ~ServerAction() = default;

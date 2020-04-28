@@ -47,7 +47,7 @@ public:
     {
         return proto::UNITTYPE_BASKET;
     }
-    auto Weight() const -> std::uint64_t final { return weight_; }
+    auto Weight() const -> const Amount& final { return weight_; }
 
     Basket(
         const api::internal::Core& api,
@@ -56,7 +56,7 @@ public:
         const std::string& name,
         const std::string& symbol,
         const std::string& terms,
-        const std::uint64_t weight,
+        const Amount& weight,
         const proto::ContactItemType unitOfAccount,
         const VersionNumber version);
     Basket(
@@ -70,7 +70,7 @@ private:
     friend unit::Basket;
 
     Subcontracts subcontracts_;
-    std::uint64_t weight_;
+    OTAmount weight_;
 
     auto BasketIDVersion(const Lock& lock) const -> proto::UnitDefinition;
     auto clone() const noexcept -> Basket* final { return new Basket(*this); }

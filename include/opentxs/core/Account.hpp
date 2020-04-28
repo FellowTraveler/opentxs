@@ -105,7 +105,7 @@ public:
         Identifier& theOutput,
         const PasswordPrompt& reason) const;
     OPENTXS_EXPORT bool DisplayStatistics(String& contents) const override;
-    OPENTXS_EXPORT Amount GetBalance() const;
+    OPENTXS_EXPORT const Amount& GetBalance() const;
     OPENTXS_EXPORT const identifier::UnitDefinition& GetInstrumentDefinitionID()
         const;
     OPENTXS_EXPORT TransactionNumber GetStashTransNum() const
@@ -134,10 +134,10 @@ public:
 
     // Debit a certain amount from the account (presumably the same amount is
     // being added somewhere)
-    OPENTXS_EXPORT bool Debit(const Amount amount);
+    OPENTXS_EXPORT bool Debit(const Amount& amount);
     // Credit a certain amount from the account (presumably the same amount is
     // being subtracted somewhere)
-    OPENTXS_EXPORT bool Credit(const Amount amount);
+    OPENTXS_EXPORT bool Credit(const Amount& amount);
     OPENTXS_EXPORT bool GetInboxHash(Identifier& output);
     OPENTXS_EXPORT bool GetOutboxHash(Identifier& output);
     OPENTXS_EXPORT bool InitBoxes(
@@ -168,7 +168,7 @@ private:
     // These are all the variables from the account file itself.
     OTUnitID acctInstrumentDefinitionID_;
     OTString balanceDate_;
-    OTString balanceAmount_;
+    OTAmount balanceAmount_;
     // the Transaction Number of a smart contract running on cron, if this is a
     // stash account.
     TransactionNumber stashTransNum_{0};

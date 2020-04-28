@@ -49,7 +49,7 @@ Item::Item(const api::internal::Core& core)
     , m_ascNote(Armored::Factory())
     , m_ascAttachment(Armored::Factory())
     , m_AcctToID(api_.Factory().Identifier())
-    , m_lAmount(0)
+    , m_lAmount(api_.Factory().Amount())
     , m_listItems()
     , m_Type(itemType::error_state)
     , m_Status(Item::request)
@@ -74,7 +74,7 @@ Item::Item(
     , m_ascNote(Armored::Factory())
     , m_ascAttachment(Armored::Factory())
     , m_AcctToID(api_.Factory().Identifier())
-    , m_lAmount(0)
+    , m_lAmount(api_.Factory().Amount())
     , m_listItems()
     , m_Type(itemType::error_state)
     , m_Status(Item::request)
@@ -99,7 +99,7 @@ Item::Item(
     , m_ascNote(Armored::Factory())
     , m_ascAttachment(Armored::Factory())
     , m_AcctToID(api_.Factory().Identifier())
-    , m_lAmount(0)
+    , m_lAmount(api_.Factory().Amount())
     , m_listItems()
     , m_Type(itemType::error_state)
     , m_Status(Item::request)
@@ -125,7 +125,7 @@ Item::Item(
     , m_ascNote(Armored::Factory())
     , m_ascAttachment(Armored::Factory())
     , m_AcctToID(api_.Factory().Identifier())
-    , m_lAmount(0)
+    , m_lAmount(api_.Factory().Amount())
     , m_listItems()
     , m_Type(itemType::error_state)
     , m_Status(Item::request)
@@ -311,7 +311,7 @@ auto Item::VerifyBalanceStatement(
     // transaction.
     if ((THE_ACCOUNT.GetBalance() + lActualAdjustment) != GetAmount()) {
         LogNormal(OT_METHOD)(__FUNCTION__)(
-            ": This balance statement has a value of ")(GetAmount())(
+            ": This balance statement has a value of ")(GetAmount().str())(
             ", but expected ")(THE_ACCOUNT.GetBalance() + lActualAdjustment)(
             ". (Acct balance of ")(THE_ACCOUNT.GetBalance())(
             " plus actualAdjustment of ")(lActualAdjustment)(").")
@@ -333,7 +333,7 @@ auto Item::VerifyBalanceStatement(
 
         OT_ASSERT(false != bool(pSubItem));
 
-        std::int64_t lReceiptAmountMultiplier = 1;  // needed for outbox items.
+        OTAmount lReceiptAmountMultiplier = api_.Factory().Amount(std::int8_t(1));  // needed for outbox items.
         const Ledger* pLedger = nullptr;
 
         switch (pSubItem->GetType()) {
@@ -453,7 +453,7 @@ auto Item::VerifyBalanceStatement(
             LogNormal(OT_METHOD)(__FUNCTION__)(": Expected ")(pszLedgerType)(
                 " transaction (server ")(outboxNum)(", client ")(
                 pSubItem->GetTransactionNum())(") not found. (Amount ")(
-                pSubItem->GetAmount())(").")
+                pSubItem->GetAmount().str()(").")
                 .Flush();
 
             return false;
@@ -483,17 +483,17 @@ auto Item::VerifyBalanceStatement(
             return false;
         }
 
-        std::int64_t lTransactionAmount =
-            pTransaction->GetReceiptAmount(reason);
+        OTAmount lTransactionAmount =
+            api_.Factory().Amount(pTransaction->GetReceiptAmount(reason));
         lTransactionAmount *= lReceiptAmountMultiplier;
 
         if (pSubItem->GetAmount() != lTransactionAmount) {
             LogNormal(OT_METHOD)(__FUNCTION__)(": Transaction (")(
                 pSubItem->GetTransactionNum())(
                 ") amounts don't match: report amount is ")(
-                pSubItem->GetAmount())(", but expected ")(lTransactionAmount)(
+                pSubItem->GetAmount().str())(", but expected ")(lTransactionAmount->str())(
                 ". Trans Receipt Amt: ")(pTransaction->GetReceiptAmount(
-                reason))(" (GetAmount() == ")(GetAmount())(").")
+                reason))(" (GetAmount() == ")(GetAmount().str())(").")
                 .Flush();
 
             return false;
@@ -1451,7 +1451,7 @@ auto Item::ProcessXMLNode(irr::io::IrrXMLReader*& xml) -> std::int32_t
         strTemp = String::Factory(xml->getAttributeValue("inReferenceTo"));
         if (strTemp->Exists()) SetReferenceToNum(strTemp->ToLong());
 
-        m_lAmount = String::StringToLong(xml->getAttributeValue("amount"));
+        m_lAmount = api_.Factory().Amount(std::string(xml->getAttributeValue("amount")));
 
         LogDebug(OT_METHOD)(__FUNCTION__)(
             ": Loaded transaction Item, transaction num ")(GetTransactionNum())(
@@ -1526,7 +1526,8 @@ auto Item::ProcessXMLNode(irr::io::IrrXMLReader*& xml) -> std::int32_t
             // agreements.)
 
             pItem->SetAmount(
-                String::StringToLong(xml->getAttributeValue("adjustment")));
+                api_.Factory().Amount(
+                    std::string(xml->getAttributeValue("adjustment"))));
 
             // Status
             pItem->SetStatus(acknowledgement);  // I don't need this, but
@@ -1896,7 +1897,7 @@ void Item::UpdateContents(const PasswordPrompt& reason)  // Before transmission
     tag.add_attribute("fromAccountID", strFromAcctID->Get());
     tag.add_attribute("toAccountID", strToAcctID->Get());
     tag.add_attribute("inReferenceTo", std::to_string(GetReferenceToNum()));
-    tag.add_attribute("amount", std::to_string(m_lAmount));
+    tag.add_attribute("amount", m_lAmount->str());
 
     // Only used in server reply item:
     // atBalanceStatement. In cases
@@ -1960,7 +1961,7 @@ void Item::UpdateContents(const PasswordPrompt& reason)  // Before transmission
                 "type",
                 receiptType->Exists() ? receiptType->Get() : "error_state");
             tagReport->add_attribute(
-                "adjustment", std::to_string(pItem->GetAmount()));
+                "adjustment", pItem->GetAmount().str());
             tagReport->add_attribute("accountID", acctID->Get());
             tagReport->add_attribute("nymID", nymID->Get());
             tagReport->add_attribute("notaryID", notaryID->Get());

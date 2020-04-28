@@ -556,7 +556,7 @@ auto Network::RequestBlocks(const std::vector<ReadView>& hashes) const noexcept
 auto Network::SendToAddress(
     const opentxs::identifier::Nym& sender,
     const std::string& address,
-    const Amount amount,
+    const Amount& amount,
     const std::string& memo) const noexcept -> PendingOutgoing
 {
     const auto [data, style, chains] = blockchain_.DecodeAddress(address);

@@ -650,7 +650,7 @@ auto Operation::construct_deposit_cash() -> std::shared_ptr<Message>
     }
 
     auto& purse = *purse_;
-    const Amount amount{purse.Value()};
+    const Amount& amount{purse.Value()};
 
     PREPARE_TRANSACTION(
         transactionType::deposit,
@@ -682,7 +682,7 @@ auto Operation::construct_deposit_cheque() -> std::shared_ptr<Message>
     }
 
     auto& cheque = *cheque_;
-    const Amount amount{cheque.GetAmount()};
+    const Amount& amount{cheque.GetAmount()};
 
     PREPARE_TRANSACTION(
         transactionType::deposit,
@@ -1299,7 +1299,7 @@ auto Operation::construct_send_transfer() -> std::shared_ptr<Message>
 #if OT_CASH
 auto Operation::construct_withdraw_cash() -> std::shared_ptr<Message>
 {
-    const Amount totalAmount(amount_);
+    const Amount& totalAmount(amount_);
 
     PREPARE_TRANSACTION(
         transactionType::withdrawal,
@@ -2437,7 +2437,7 @@ auto Operation::SendPeerRequest(
 auto Operation::SendTransfer(
     const Identifier& sourceAccountID,
     const Identifier& destinationAccountID,
-    const Amount amount,
+    const Amount& amount,
     const String& memo) -> bool
 {
     START()
@@ -2753,7 +2753,7 @@ auto Operation::UpdateAccount(const Identifier& accountID) -> bool
 }
 
 #if OT_CASH
-auto Operation::WithdrawCash(const Identifier& accountID, const Amount amount)
+auto Operation::WithdrawCash(const Identifier& accountID, const Amount& amount)
     -> bool
 {
     START()

@@ -50,7 +50,7 @@ Lucre::Lucre(
     const VersionNumber version,
     const proto::TokenState state,
     const std::uint64_t series,
-    const Denomination value,
+    const Amount& value,
     const Time validFrom,
     const Time validTo,
     const String& signature,
@@ -118,7 +118,7 @@ Lucre::Lucre(
           in.lucre().version(),
           in.state(),
           in.series(),
-          in.denomination(),
+            api.Factory().Amount(static_cast<std::int64_t>(in.denomination())),
           Clock::from_time_t(in.validfrom()),
           Clock::from_time_t(in.validto()),
           String::Factory(),
@@ -177,7 +177,7 @@ Lucre::Lucre(
     const api::internal::Core& api,
     const identity::Nym& owner,
     const Mint& mint,
-    const Denomination value,
+    const Amount& value,
     Purse& purse,
     const PasswordPrompt& reason)
     : Lucre(
@@ -266,13 +266,13 @@ auto Lucre::GenerateTokenRequest(
 
     if (serializedMint->empty()) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
-            ": Failed to get public mint for series ")(denomination_)
+            ": Failed to get public mint for series ")(denomination_->str())
             .Flush();
 
         return false;
     } else {
         LogInsane(OT_METHOD)(__FUNCTION__)(": Begin mint series ")(
-            denomination_)
+            denomination_->str())
             .Flush();
         LogInsane(serializedMint).Flush();
         LogInsane(OT_METHOD)(__FUNCTION__)(": End mint").Flush();
@@ -542,13 +542,13 @@ auto Lucre::Process(
 
     if (serializedMint->empty()) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
-            ": Failed to get public mint for series ")(denomination_)
+            ": Failed to get public mint for series ")(denomination_->str())
             .Flush();
 
         return false;
     } else {
         LogInsane(OT_METHOD)(__FUNCTION__)(": Begin mint series ")(
-            denomination_)
+            denomination_->str())
             .Flush();
         LogInsane(serializedMint).Flush();
         LogInsane(OT_METHOD)(__FUNCTION__)(": End mint").Flush();

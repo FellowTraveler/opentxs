@@ -745,7 +745,7 @@ public:
         const std::string& name,
         const std::string& symbol,
         const std::string& terms,
-        const std::uint64_t weight,
+        const Amount& weight,
         const VersionNumber version = contract::Unit::DefaultVersion) const;
 
     /** ----------------------------------------------------

@@ -2889,18 +2889,20 @@ void Server::process_accept_cron_receipt_reply(
         if (bIsAsset) {
             const auto strInstrumentDefinitionID =
                 String::Factory(theTrade->GetInstrumentDefinitionID());
-            std::int64_t lAssetsThisTrade = pServerItem->GetAmount();
+            OTAmount lAssetsThisTrade =
+                api_.Factory().Amount(pServerItem->GetAmount());
             pData->instrument_definition_id = strInstrumentDefinitionID->Get();
             // The amount of ASSETS moved, this trade.
-            pData->amount_sold = std::to_string(lAssetsThisTrade);
+            pData->amount_sold = lAssetsThisTrade->str();
             pData->asset_acct_id = strAcctID->Get();
             pData->asset_receipt = strServerTransaction->Get();
         } else if (bIsCurrency) {
             const auto strCurrencyID =
                 String::Factory(theTrade->GetCurrencyID());
-            std::int64_t lCurrencyThisTrade = pServerItem->GetAmount();
+            OTAmount lCurrencyThisTrade =
+                api_.Factory().Amount(pServerItem->GetAmount());
             pData->currency_id = strCurrencyID->Get();
-            pData->currency_paid = std::to_string(lCurrencyThisTrade);
+            pData->currency_paid = lCurrencyThisTrade->str();
             pData->currency_acct_id = strAcctID->Get();
             pData->currency_receipt = strServerTransaction->Get();
         }
@@ -2992,20 +2994,17 @@ void Server::process_accept_cron_receipt_reply(
                 if (!pTradeData->amount_sold.empty() &&
                     !pTradeData->currency_paid.empty()) {
 
-                    const std::int64_t lAmountSold =
-                        String::StringToLong(pTradeData->amount_sold);
-                    const std::int64_t lCurrencyPaid =
-                        String::StringToLong(pTradeData->currency_paid);
+                    const OTAmount lAmountSold =
+                    api_.Factory().Amount(pTradeData->amount_sold);
+                    const OTAmount lCurrencyPaid =
+                    api_.Factory().Amount(pTradeData->currency_paid);
 
                     // just in case (divide by 0.)
-                    if ((lAmountSold != 0) && (lScale != 0)) {
-                        const std::int64_t lSalePrice =
-                            (lCurrencyPaid / (lAmountSold / lScale));
-
-                        auto strSalePrice = String::Factory();
-                        strSalePrice->Format("%" PRId64 "", lSalePrice);
-
-                        pTradeData->price = strSalePrice->Get();
+                    if ((lAmountSold != api_.Factory().Amount()) && (lScale != api_.Factory().Amount())) {
+                        const OTAmount lSalePrice =
+                            opentxs::Factory::Amount(
+                              (lCurrencyPaid / (lAmountSold / api_.Factory().Amount(lScale))));
+                        pTradeData->price = lSalePrice->str();
                     }
                 }
 
@@ -5328,7 +5327,7 @@ void Server::process_response_transaction_cheque_deposit(
         return;
     }
 
-    if (0 < cheque.GetAmount()) {
+    if (cheque.GetAmount() >= api_.Factory().Amount()) {
         // Cheque or voucher
         const auto workflowUpdated = client.Workflow().DepositCheque(
             nymID, accountID, cheque, request, reply);

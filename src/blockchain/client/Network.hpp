@@ -171,7 +171,7 @@ public:
     auto SendToAddress(
         const opentxs::identifier::Nym& sender,
         const std::string& address,
-        const Amount amount,
+        const Amount& amount,
         const std::string& memo) const noexcept -> PendingOutgoing final;
     auto Submit(network::zeromq::Message& work) const noexcept -> void final;
     auto UpdateHeight(const block::Height height) const noexcept -> void final;

@@ -53,7 +53,7 @@ auto OTClient::ProcessUserCommand(
     const Identifier& pHisNymID,
     const Identifier& pHisAcctID,
     const PasswordPrompt& reason,
-    const Amount lTransactionAmount,
+    const Amount& lTransactionAmount,
     const Account* pAccount,
     const contract::Unit* pMyUnitDefinition
 

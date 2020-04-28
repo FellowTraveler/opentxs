@@ -19,6 +19,7 @@
 #include "opentxs/Types.hpp"
 #include "opentxs/api/Editor.hpp"
 #include "opentxs/client/ServerAction.hpp"
+//#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Cheque.hpp"
 #include "opentxs/core/Identifier.hpp"
 #include "opentxs/core/Ledger.hpp"
@@ -290,14 +291,14 @@ private:
     otx::context::Server& context_;
     CommandResult last_attempt_;
     const bool is_transaction_{false};
-    Amount activationPrice_{0};
-    Amount adjustment_{0};
-    Amount amount_{0};
-    Amount depth_{0};
-    Amount increment_{0};
-    Amount quantity_{0};
-    Amount price_{0};
-    Amount scale_{0};
+    OTAmount activationPrice_;
+    OTAmount adjustment_;
+    OTAmount amount_;
+    OTAmount depth_;
+    OTAmount increment_;
+    OTAmount quantity_;
+    OTAmount price_;
+    OTAmount scale_;
     TransactionNumber transactionNumber_{0};  // This is not what gets returned
                                               // by GetTransactionNumber.
     proto::ConnectionInfoType infoType_{proto::CONNECTIONINFO_ERROR};

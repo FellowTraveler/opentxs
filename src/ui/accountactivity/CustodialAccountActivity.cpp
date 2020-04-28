@@ -97,7 +97,6 @@ auto CustodialAccountActivity::DisplayBalance() const noexcept -> std::string
     std::string output{};
     const auto formatted =
         contract_->FormatAmountLocale(amount, output, ",", ".");
-
     if (formatted) { return output; }
 
     return std::to_string(amount);

@@ -69,12 +69,13 @@ auto AccountListItem::Balance() const noexcept -> Amount
 auto AccountListItem::DisplayBalance() const noexcept -> std::string
 {
     auto output = std::string{};
+    const auto amount = Amount::Factory(balance_);
     const auto formatted =
-        contract_->FormatAmountLocale(balance_, output, ",", ".");
+        contract_->FormatAmountLocale(amount, output, ",", ".");
 
     if (formatted) { return output; }
 
-    return std::to_string(balance_);
+    return amount->str();
 }
 
 auto AccountListItem::load_server(
@@ -125,7 +126,7 @@ auto AccountListItem::qt_data(const int column, int role) const noexcept
             return AccountID().c_str();
         }
         case AccountListQt::BalanceRole: {
-            return static_cast<unsigned long long>(Balance());
+            return Balance().c_str();
         }
         case AccountListQt::PolarityRole: {
             return polarity(Balance());

@@ -8,6 +8,8 @@
 
 #include "opentxs/Forward.hpp"  // IWYU pragma: associated
 
+#include "opentxs/core/Amount.hpp"
+
 #include <irrxml/irrXML.hpp>
 #include <chrono>
 #include <cstdint>
@@ -133,7 +135,7 @@ public:
     // Then call one (or both) of these:
 
     OPENTXS_EXPORT bool SetInitialPayment(
-        const Amount lAmount,
+        const Amount& lAmount,
         const std::chrono::seconds tTimeUntilInitialPayment = {});  // default:
                                                                     // now.
 
@@ -143,7 +145,7 @@ public:
     // Meaning: You can have an initial payment AND/OR a payment plan.
 
     OPENTXS_EXPORT bool SetPaymentPlan(
-        const Amount lPaymentAmount,
+        const Amount& lPaymentAmount,
         const std::chrono::seconds tTimeUntilPlanStart =
             std::chrono::hours{24 * 30},
         const std::chrono::seconds tBetweenPayments =
@@ -181,7 +183,7 @@ public:
     {
         return m_tInitialPaymentDate;
     }
-    inline const std::int64_t& GetInitialPaymentAmount() const
+    inline const Amount& GetInitialPaymentAmount() const
     {
         return m_lInitialPaymentAmount;
     }
@@ -202,7 +204,7 @@ public:
 
     // ************ "PAYMENT PLAN" public GET METHODS ****************
     inline bool HasPaymentPlan() const { return m_bPaymentPlan; }
-    inline const std::int64_t& GetPaymentPlanAmount() const
+    inline const Amount& GetPaymentPlanAmount() const
     {
         return m_lPaymentPlanAmount;
     }
@@ -280,10 +282,7 @@ protected:
     {
         m_tInitialPaymentDate = tInitialPaymentDate;
     }
-    inline void SetInitialPaymentAmount(const std::int64_t& lAmount)
-    {
-        m_lInitialPaymentAmount = lAmount;
-    }
+    void SetInitialPaymentAmount(const Amount& amount);
 
     // Sets the bool that officially the initial payment has been done. (Checks
     // first to make sure not already done.)
@@ -306,10 +305,8 @@ protected:
     inline void IncrementNoInitialFailures() { m_nNumberInitialFailures++; }
 
     // "PAYMENT PLAN" protected SET METHODS
-    inline void SetPaymentPlanAmount(const std::int64_t& lAmount)
-    {
-        m_lPaymentPlanAmount = lAmount;
-    }
+    void SetPaymentPlanAmount(const Amount& amount);
+
     inline void SetTimeBetweenPayments(const std::chrono::seconds tTimeBetween)
     {
         m_tTimeBetweenPayments = tTimeBetween;
@@ -371,13 +368,13 @@ private:
     Time m_tFailedInitialPaymentDate;      // Date of the last failed
                                            // payment, measured seconds after
                                            // creation.
-    std::int64_t m_lInitialPaymentAmount;  // Amount of the initial payment.
+    OTAmount m_lInitialPaymentAmount;  // Amount of the initial payment.
     bool m_bInitialPaymentDone;            // Has the initial payment been made?
     std::int32_t m_nNumberInitialFailures;  // If we've tried to process this
                                             // multiple times, we'll know.
     // "PAYMENT PLAN" private MEMBERS
     bool m_bPaymentPlan;                // Will there be a payment plan?
-    std::int64_t m_lPaymentPlanAmount;  // Amount of each payment.
+    OTAmount m_lPaymentPlanAmount;  // Amount of each payment.
     std::chrono::seconds m_tTimeBetweenPayments;  // How much time between
                                                   // each payment?
     Time m_tPaymentPlanStartDate;  // Date for the first payment plan

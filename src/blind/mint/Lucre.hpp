@@ -46,7 +46,7 @@ class Lucre final : Mint
 public:
     auto AddDenomination(
         const identity::Nym& theNotary,
-        const std::int64_t denomination,
+        const Amount& denomination,
         const std::size_t keySize,
         const PasswordPrompt& reason) -> bool final;
 

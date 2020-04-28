@@ -698,7 +698,8 @@ auto Activity::PaymentText(
             if (0 < contract->Version()) {
                 std::string amount{};
                 const bool haveAmount = contract->FormatAmountLocale(
-                    cheque->GetAmount(), amount, ",", ".");
+                    cheque->GetAmount(),
+                    amount, ",", ".");
 
                 if (haveAmount) {
                     const std::string text =
@@ -719,7 +720,8 @@ auto Activity::PaymentText(
             if (0 < contract->Version()) {
                 std::string amount{};
                 const bool haveAmount = contract->FormatAmountLocale(
-                    transfer->GetAmount(), amount, ",", ".");
+                    transfer->GetAmount(),
+                    amount, ",", ".");
 
                 if (haveAmount) {
                     const std::string text =

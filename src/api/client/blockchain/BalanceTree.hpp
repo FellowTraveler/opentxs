@@ -89,7 +89,7 @@ public:
         return hd_.at(account);
     }
     auto LookupUTXO(const Coin& coin) const noexcept
-        -> std::optional<std::pair<Key, Amount>> final;
+        -> std::optional<std::pair<Key, std::uint64_t>> final;
     auto Node(const Identifier& id) const noexcept(false)
         -> internal::BalanceNode& final;
     auto NymID() const noexcept -> const identifier::Nym& final

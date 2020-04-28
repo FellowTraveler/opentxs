@@ -146,7 +146,7 @@ public:
         const std::string& memo,
         const PaymentType type) const noexcept -> bool final;
     auto Pay(
-        const Amount amount,
+        const Amount& amount,
         const Identifier& sourceAccount,
         const std::string& memo,
         const PaymentType type) const noexcept -> bool final;
@@ -183,7 +183,7 @@ private:
         const ActivityThreadSortKey& index,
         CustomData& custom) const noexcept -> RowPointer final;
     auto send_cheque(
-        const Amount amount,
+        const Amount& amount,
         const Identifier& sourceAccount,
         const std::string& memo) const noexcept -> bool;
     auto validate_account(const Identifier& sourceAccount) const noexcept

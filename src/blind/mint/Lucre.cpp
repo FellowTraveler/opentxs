@@ -98,7 +98,7 @@ Lucre::Lucre(
 // Pass the actual denomination such as 5, 10, 20, 50, 100...
 auto Lucre::AddDenomination(
     const identity::Nym& theNotary,
-    const std::int64_t denomination,
+    const Amount& denomination,
     const std::size_t keySize,
     const PasswordPrompt& reason) -> bool
 {
@@ -194,7 +194,7 @@ auto Lucre::AddDenomination(
     m_nDenominationCount++;
     bReturnValue = true;
     LogDetail(OT_METHOD)(__FUNCTION__)(": Successfully added denomination: ")(
-        denomination)
+        denomination.str())
         .Flush();
 
     return bReturnValue;

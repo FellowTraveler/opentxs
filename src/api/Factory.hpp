@@ -165,11 +165,21 @@ class OTTransactionType;
 class PeerObject;
 }  // namespace opentxs
 
+#include "opentxs/core/Amount.hpp"
+
 namespace opentxs::api::implementation
 {
 class Factory : virtual public api::internal::Factory
 {
 public:
+    auto Amount() const -> OTAmount final;
+    auto Amount(const opentxs::Amount& input) const -> OTAmount final;
+    auto Amount(const std::int8_t input) const -> OTAmount final;
+    auto Amount(const std::int16_t input) const -> OTAmount final;
+    auto Amount(const std::int32_t input) const -> OTAmount final;
+    auto Amount(const std::int64_t input) const -> OTAmount final;
+    auto Amount(const std::string input) const -> OTAmount final;
+
     auto Armored() const -> OTArmored final;
     auto Armored(const std::string& input) const -> OTArmored final;
     auto Armored(const opentxs::Data& input) const -> OTArmored final;
@@ -197,7 +207,7 @@ public:
         const identifier::Server& serverID,
         const opentxs::Identifier& requestID,
         const std::string& txid,
-        const Amount& amount,
+        const opentxs::Amount& amount,
         const opentxs::PasswordPrompt& reason) const noexcept(false)
         -> OTBailmentNotice final;
     auto BailmentNotice(const Nym_p& nym, const proto::PeerRequest& serialized)
@@ -223,15 +233,15 @@ public:
         const noexcept(false) -> OTBailmentRequest final;
 #if OT_WITH_BASKETS
     auto Basket() const -> std::unique_ptr<opentxs::Basket> final;
-    auto Basket(std::int32_t nCount, std::int64_t lMinimumTransferAmount) const
-        -> std::unique_ptr<opentxs::Basket> final;
+    auto Basket(std::int32_t nCount, opentxs::Amount& lMinimumTransferAmount)
+        const -> std::unique_ptr<opentxs::Basket> final;
     auto BasketContract(
         const Nym_p& nym,
         const std::string& shortname,
         const std::string& name,
         const std::string& symbol,
         const std::string& terms,
-        const std::uint64_t weight,
+        const opentxs::Amount& weight,
         const proto::ContactItemType unitOfAccount,
         const VersionNumber version) const noexcept(false)
         -> OTBasketContract final;
@@ -537,7 +547,7 @@ public:
         const identifier::Nym& recipientID,
         const identifier::UnitDefinition& unitID,
         const identifier::Server& serverID,
-        const std::uint64_t& amount,
+        const opentxs::Amount& amount,
         const std::string& terms,
         const opentxs::PasswordPrompt& reason) const noexcept(false)
         -> OTOutbailmentRequest final;
@@ -630,7 +640,7 @@ public:
         const otx::context::Server& context,
         const identifier::UnitDefinition& unit,
         const blind::Mint& mint,
-        const Amount totalValue,
+        const opentxs::Amount& totalValue,
         const opentxs::PasswordPrompt& reason,
         const proto::CashType type) const
         -> std::unique_ptr<blind::Purse> final;

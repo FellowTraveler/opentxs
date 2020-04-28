@@ -8,6 +8,8 @@
 
 #include "opentxs/Forward.hpp"  // IWYU pragma: associated
 
+#include "opentxs/core/Amount.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -58,7 +60,7 @@ public:
         const Identifier& pHisNymID,
         const Identifier& pHisAcctID,
         const PasswordPrompt& reason,
-        const Amount lTransactionAmount = 0,
+        const Amount& lTransactionAmount,
         const Account* pAccount = nullptr,
         const contract::Unit* pMyUnitDefinition = nullptr);
 

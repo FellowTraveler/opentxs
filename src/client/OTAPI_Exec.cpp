@@ -176,9 +176,9 @@ auto OTAPI_Exec::ProposePaymentPlan(
             : String::Factory(PLAN_CONSIDERATION),
         api_.Factory().Identifier(RECIPIENT_ACCT_ID),
         api_.Factory().NymID(RECIPIENT_NYM_ID),
-        static_cast<std::int64_t>(INITIAL_PAYMENT_AMOUNT),
+        api_.Factory().Amount(INITIAL_PAYMENT_AMOUNT),
         INITIAL_PAYMENT_DELAY,
-        static_cast<std::int64_t>(PAYMENT_PLAN_AMOUNT),
+        api_.Factory().Amount(PAYMENT_PLAN_AMOUNT),
         PAYMENT_PLAN_DELAY,
         PAYMENT_PLAN_PERIOD,
         PAYMENT_PLAN_LENGTH,
@@ -2659,7 +2659,7 @@ auto OTAPI_Exec::GenerateBasketCreation(
     const std::string& name,
     const std::string& symbol,
     const std::string& terms,
-    const std::uint64_t weight,
+    const opentxs::Amount& weight,
     const VersionNumber version) const -> std::string
 {
     try {

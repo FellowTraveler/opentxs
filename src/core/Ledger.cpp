@@ -1392,7 +1392,7 @@ auto Ledger::GenerateBalanceStatement(
 }
 
 auto Ledger::GenerateBalanceStatement(
-    std::int64_t lAdjustment,
+    const Amount& lAdjustment,
     const OTTransaction& theOwner,
     const otx::context::Server& context,
     const Account& theAccount,
@@ -1522,7 +1522,7 @@ auto Ledger::GenerateBalanceStatement(
     if (!statement) { return nullptr; }
 
     pBalanceItem->SetAttachment(OTString(*statement));
-    std::int64_t lCurrentBalance = theAccount.GetBalance();
+    OTAmount lCurrentBalance = api_.Factory().Amount(theAccount.GetBalance());
     // The new (predicted) balance for after the transaction is complete.
     // (item.GetAmount)
     pBalanceItem->SetAmount(lCurrentBalance + lAdjustment);
@@ -1562,7 +1562,7 @@ auto Ledger::GenerateBalanceStatement(
 //
 auto Ledger::GetTotalPendingValue(const PasswordPrompt& reason) -> std::int64_t
 {
-    std::int64_t lTotalPendingValue = 0;
+    auto lTotalPendingValue{api_.Factory().Amount(std::int8_t(0))};
 
     if (ledgerType::inbox != GetType()) {
         LogOutput(OT_METHOD)(__FUNCTION__)(": Wrong ledger type (expected "

@@ -138,7 +138,8 @@ auto BalanceItem::DisplayAmount() const noexcept -> std::string
 
     if (formatted) { return output; }
 
-    return std::to_string(amount);
+    //return std::to_string(amount);
+    return amount->str();
 }
 
 auto BalanceItem::extract_contacts(

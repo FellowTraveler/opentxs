@@ -18,6 +18,7 @@
 #include "opentxs/core/identifier/Nym.hpp"
 #include "opentxs/core/identifier/Server.hpp"
 #include "opentxs/core/identifier/UnitDefinition.hpp"
+#include "opentxs/core/Amount.hpp"
 
 namespace opentxs
 {
@@ -54,11 +55,11 @@ public:
     }
 
     auto GetExpiration() const -> Time override { return m_EXPIRATION; }
-    auto GetLargestDenomination(std::int64_t lAmount) const
+    auto GetLargestDenomination(const Amount& amount) const
         -> std::int64_t override;
-    auto GetPrivate(Armored& theArmor, std::int64_t lDenomination) const
+    auto GetPrivate(Armored& theArmor, const Amount& lDenomination) const
         -> bool override;
-    auto GetPublic(Armored& theArmor, std::int64_t lDenomination) const
+    auto GetPublic(Armored& theArmor, const Amount& lDenomination) const
         -> bool override;
     auto GetSeries() const -> std::int32_t override { return m_nSeries; }
     auto GetValidFrom() const -> Time override { return m_VALID_FROM; }
@@ -78,16 +79,16 @@ public:
         const identifier::UnitDefinition& theInstrumentDefinitionID,
         const identifier::Server& theNotaryID,
         const identity::Nym& theNotary,
-        const std::int64_t nDenom1,
-        const std::int64_t nDenom2,
-        const std::int64_t nDenom3,
-        const std::int64_t nDenom4,
-        const std::int64_t nDenom5,
-        const std::int64_t nDenom6,
-        const std::int64_t nDenom7,
-        const std::int64_t nDenom8,
-        const std::int64_t nDenom9,
-        const std::int64_t nDenom10,
+        const Amount& nDenom1,
+        const Amount& nDenom2,
+        const Amount& nDenom3,
+        const Amount& nDenom4,
+        const Amount& nDenom5,
+        const Amount& nDenom6,
+        const Amount& nDenom7,
+        const Amount& nDenom8,
+        const Amount& nDenom9,
+        const Amount& nDenom10,
         const std::size_t keySize,
         const PasswordPrompt& reason) override;
     auto LoadContract() -> bool override;
@@ -112,7 +113,7 @@ public:
     ~Mint() override;
 
 protected:
-    using mapOfArmor = std::map<std::int64_t, OTArmored>;
+    using mapOfArmor = std::map<OTAmount, OTArmored>;
 
     auto ProcessXMLNode(irr::io::IrrXMLReader*& xml) -> std::int32_t override;
 

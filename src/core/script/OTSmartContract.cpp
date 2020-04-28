@@ -1287,7 +1287,7 @@ auto OTSmartContract::GetAcctBalance(std::string from_acct_name) -> std::string
         return {};
     }
 
-    return std::to_string(account.get().GetBalance());
+    return account.get().GetBalance().str();
 }
 
 auto OTSmartContract::GetUnitTypeIDofAcct(std::string from_acct_name)
@@ -1548,9 +1548,9 @@ auto OTSmartContract::GetStashBalance(
     //        instrument_definition_id
     //        pServerNym, pCron.
     //
-    auto strBalance = String::Factory();
-    strBalance->Format("%" PRId64, pStash->GetAmount(instrument_definition_id));
-    return strBalance->Get();
+    OTAmount amount =
+        api_.Factory().Amount(pStash->GetAmount(instrument_definition_id));
+    return amount->str();
 }
 
 auto OTSmartContract::SendANoticeToAllParties(const PasswordPrompt& reason)
@@ -1750,12 +1750,12 @@ auto OTSmartContract::StashAcctFunds(
         return false;
     }
 
-    const std::int64_t lAmount = String::StringToLong(str_Amount.c_str());
+    const OTAmount amount = api_.Factory().Amount(str_Amount);
 
-    if (lAmount <= 0) {
+    if (amount <= 0) {
         LogNormal(OT_METHOD)(__FUNCTION__)(
-            ": Error: lAmount cannot be 0 "
-            "or <0. (Value passed in was ")(lAmount)(").")
+            ": Error: amount cannot be 0 "
+            "or <0. (Value passed in was ")(amount->str())(").")
             .Flush();
         return false;
     }
@@ -1965,12 +1965,12 @@ auto OTSmartContract::StashAcctFunds(
     // since the funds are going into a stash.
 
     bool bMoved =
-        StashFunds(lAmount, theFromAcctID, theFromAgentID, *pStash, reason);
+        StashFunds(amount, theFromAcctID, theFromAgentID, *pStash, reason);
     if (!bMoved) {
         LogNormal(OT_METHOD)(__FUNCTION__)(
             ":  Failed in final call. "
             "Values: from_acct: ")(from_acct_name)(", to_stash: ")(
-            to_stash_name)(", lAmount: ")(lAmount)(".")
+            to_stash_name)(", amount: ")(amount->str())(".")
             .Flush();
         return false;
     }
@@ -2017,12 +2017,12 @@ auto OTSmartContract::UnstashAcctFunds(
         return false;
     }
 
-    const std::int64_t lAmount = String::StringToLong(str_Amount.c_str());
+    const OTAmount amount = api_.Factory().Amount(str_Amount);
 
-    if (lAmount <= 0) {
+    if (amount <= 0) {
         LogNormal(OT_METHOD)(__FUNCTION__)(
-            ": Error: lAmount cannot be "
-            "0 or <0. (Value passed in was ")(lAmount)(").")
+            ": Error: amount cannot be "
+            "0 or <0. (Value passed in was ")(amount->str())(").")
             .Flush();
         return false;
     }
@@ -2203,14 +2203,14 @@ auto OTSmartContract::UnstashAcctFunds(
     // Above: the FromAgent and FromAcct are commented out,
     // since the funds are coming from a stash.
 
-    const std::int64_t lNegativeAmount = (lAmount * (-1));
+    const OTAmount negativeAmount = opentxs::Factory::Amount(amount * (-1));
 
     bool bMoved =
-        StashFunds(lNegativeAmount, theToAcctID, theToAgentID, *pStash, reason);
+        StashFunds(negativeAmount, theToAcctID, theToAgentID, *pStash, reason);
     if (!bMoved) {
         LogNormal(OT_METHOD)(__FUNCTION__)(":  Failed in final call. "
                                            "Values: to_acct: ")(to_acct_name)(
-            ", from_stash: ")(from_stash_name)(", lAmount: ")(lAmount)(".")
+            ", from_stash: ")(from_stash_name)(", amount: ")(amount->str())(".")
             .Flush();
         return false;
     }
@@ -2225,8 +2225,8 @@ auto OTSmartContract::UnstashAcctFunds(
 // true == success, false == failure.
 //
 auto OTSmartContract::StashFunds(
-    const std::int64_t& lAmount,  // negative amount here means UNstash.
-                                  // Positive means STASH.
+    const Amount& amount,  // negative amount here means UNstash.
+                           // Positive means STASH.
     const Identifier& PARTY_ACCT_ID,
     const identifier::Nym& PARTY_NYM_ID,
     OTStash& theStash,
@@ -2238,7 +2238,7 @@ auto OTSmartContract::StashFunds(
     Nym_p pServerNym(pCron->GetServerNym());
     OT_ASSERT(nullptr != pServerNym);
 
-    if (0 == lAmount) {
+    if (amount == api_.Factory().Amount()) {
         LogNormal(OT_METHOD)(__FUNCTION__)(": A zero amount is not allowed.")
             .Flush();
         return false;
@@ -2284,12 +2284,10 @@ auto OTSmartContract::StashFunds(
 
     //
     const bool bUnstashing =
-        (lAmount < 0);  // If the amount is negative, then we're UNSTASHING.
-    const std::int64_t lAbsoluteAmount =
-        bUnstashing
-            ? (lAmount * (-1))
-            : lAmount;  // NEGATIVE AMOUNT SHOULD BEHAVE AS "UNSTASH FUNDS" !!
-
+        (amount < api_.Factory().Amount()));  // If the amount is negative, then we're UNSTASHING.
+    const OTAmount absoluteAmount = api_.Factory().Amount(bUnstashing
+                                                             ? (amount * (-1))
+                                                             : amount);
     // Normally if you stash 10 clams, then your account is -10 clams, and your
     // stash is +10 clams.
     // Therefore if you unstash 5 gg, then your gg acct is +5 grams and your
@@ -2300,7 +2298,7 @@ auto OTSmartContract::StashFunds(
     // Whereas if lAmount were < 0, then that amount should be DEBITED from the
     // Stash Acct, and CREDITED to the Party Acct.
 
-    // Below this point, lAbsoluteAmount is always a positive number.
+    // Below this point, absoluteAmount is always a positive number.
     // Whereas if lAmount < 0, that means we are doing an UNSTASH in this
     // function.
     //
@@ -2311,15 +2309,16 @@ auto OTSmartContract::StashFunds(
     // we're trying to move?
     //
 
-    const Amount lPartyAssetBalance = account.get().GetBalance();
-    const Amount lStashItemAmount = pStashItem->GetAmount();
-    const Amount lSourceAmount =
-        bUnstashing ? lStashItemAmount : lPartyAssetBalance;
+    const OTAmount lPartyAssetBalance = opentxs::Factory::Amount(account.get().GetBalance());
+    const OTAmount lStashItemAmount =
+        opentxs::Factory::Amount(pStashItem->GetAmount());
+    const OTAmount lSourceAmount =
+        opentxs::Factory::Amount(bUnstashing ? lStashItemAmount : lPartyAssetBalance);
 
     // If the source, minus amount, is less than 0, then it CANNOT accommodate
     // the action.
     //
-    if ((lSourceAmount - lAbsoluteAmount) < 0) {
+    if ((lSourceAmount - absoluteAmount) < 0) {
         LogNormal(OT_METHOD)(__FUNCTION__)(
             ": Not enough funds available in the "
             "source to accommodate this action.")
@@ -2375,14 +2374,14 @@ auto OTSmartContract::StashFunds(
     // are coming from, is that source LARGE enough to accommodate the amount
     // we're trying to move?
     //
-    const std::int64_t lSourceAmount2 = bUnstashing
+    const OTArmor lSourceAmount2 = opentxs::Factory::Amount(bUnstashing
                                             ? stashAccount.get().GetBalance()
-                                            : account.get().GetBalance();
+                                            : account.get().GetBalance());
 
     // If the source, minus amount, is less than 0, then it CANNOT accommodate
     // the action.
     //
-    if ((lSourceAmount2 - lAbsoluteAmount) < 0) {
+    if ((lSourceAmount2 - absoluteAmount) < 0) {
         LogNormal(OT_METHOD)(__FUNCTION__)(
             ": Not enough funds avilable in the "
             "stash acct to accomodate this action.")
@@ -2655,15 +2654,15 @@ auto OTSmartContract::StashFunds(
 
             if (bUnstashing)  //  Debit Stash, Credit Party
             {
-                if (stashAccount.get().GetBalance() >= lAbsoluteAmount) {
+                if (stashAccount.get().GetBalance() >= absoluteAmount) {
                     // Debit the stash account.
                     bMoveStash = stashAccount.get().Debit(
-                        lAbsoluteAmount);  // <====== DEBIT FUNDS
+                        absoluteAmount);  // <====== DEBIT FUNDS
 
                     // IF success, credit the party.
                     if (bMoveStash) {
                         bMoveParty = account.get().Credit(
-                            lAbsoluteAmount);  // <=== CREDIT FUNDS
+                            absoluteAmount);  // <=== CREDIT FUNDS
 
                         // Okay, we already took it from the stash account.
                         // But if we FAIL to credit the party, then we need to
@@ -2673,13 +2672,13 @@ auto OTSmartContract::StashFunds(
                         //
                         if (!bMoveParty) {
                             bool bErr = stashAccount.get().Credit(
-                                lAbsoluteAmount);  // put the money back
+                                absoluteAmount);  // put the money back
 
                             LogOutput(OT_METHOD)(__FUNCTION__)(
                                 ": While "
                                 "succeeded debiting the stash account, "
                                 "FAILED in: "
-                                "account.get().Credit(lAbsoluteAmount);"
+                                "account.get().Credit(absoluteAmount);"
                                 " Also, tried to credit stash account back "
                                 "again. Result: ")(
                                 bErr ? "success" : "failure")(".")
@@ -2687,7 +2686,7 @@ auto OTSmartContract::StashFunds(
                         } else {  // SUCCESS!
                             //
                             bool bStashSuccess = pStashItem->DebitStash(
-                                lAbsoluteAmount);  // we already verified above
+                                absoluteAmount);  // we already verified above
                                                    // that this stash item has
                                                    // enough funds to
                                                    // successfully debit.
@@ -2707,21 +2706,21 @@ auto OTSmartContract::StashFunds(
                     } else {
                         LogOutput(OT_METHOD)(__FUNCTION__)(
                             ": FAILED in:  "
-                            "stashAccount.get().Debit(lAbsoluteAmount).")
+                            "stashAccount.get().Debit(absoluteAmount).")
                             .Flush();
                     }
                 }
             } else  // Debit party, Credit Stash
             {
-                if (account.get().GetBalance() >= lAbsoluteAmount) {
+                if (account.get().GetBalance() >= absoluteAmount) {
                     // Debit the party account.
                     bMoveParty = account.get().Debit(
-                        lAbsoluteAmount);  // <====== DEBIT FUNDS
+                        absoluteAmount);  // <====== DEBIT FUNDS
 
                     // IF success, credit the Stash.
                     if (bMoveParty) {
                         bMoveStash = stashAccount.get().Credit(
-                            lAbsoluteAmount);  // <=== CREDIT FUNDS
+                            absoluteAmount);  // <=== CREDIT FUNDS
 
                         // Okay, we already took it from the party account.
                         // But if we FAIL to credit the Stash, then we need to
@@ -2731,14 +2730,14 @@ auto OTSmartContract::StashFunds(
                         //
                         if (!bMoveStash) {
                             bool bErr = account.get().Credit(
-                                lAbsoluteAmount);  // put the money back
+                                absoluteAmount);  // put the money back
 
                             LogOutput(OT_METHOD)(__FUNCTION__)(
                                 ": While "
                                 "succeeded debiting the asset account, "
                                 "FAILED in: "
                                 "stashAccount.get().Credit("
-                                "lAbsoluteAmount); "
+                                "absoluteAmount); "
                                 " Also, tried to credit asset account back "
                                 "again. Result: ")(
                                 bErr ? "success" : "failure")(".")
@@ -2746,7 +2745,7 @@ auto OTSmartContract::StashFunds(
                         } else {  // SUCCESS!
                             //
                             bool bStashSuccess = pStashItem->CreditStash(
-                                lAbsoluteAmount);  // we already verified above
+                                absoluteAmount);  // we already verified above
                                                    // that this stash item has
                                                    // enough funds to
                                                    // successfully debit.
@@ -2766,7 +2765,7 @@ auto OTSmartContract::StashFunds(
                     } else {
                         LogOutput(OT_METHOD)(__FUNCTION__)(
                             ": FAILED in: "
-                            "account.get().Debit(lAbsoluteAmount).")
+                            "account.get().Debit(absoluteAmount).")
                             .Flush();
                     }
                 }
@@ -2803,18 +2802,19 @@ auto OTSmartContract::StashFunds(
                 //
                 pItemParty->SetStatus(Item::acknowledgement);  // account
 
-                const std::int64_t lReceiptAmount = (lAmount * (-1));
+                const OTAmount lReceiptAmount =
+                    opentxs::Factory::Amount(amount * (-1));
 
-                //                pItemParty->SetAmount(lAmount);    // lAmount
                 // is already negative or positive by the time it's passed into
                 // this function.
+//              pItemParty->SetAmount(lAmount);    // lAmount
                 pItemParty->SetAmount(lReceiptAmount);  // However, if we are
                                                         // stashing 100, that
                                                         // means my account is
                                                         // -100. Therefore
                                                         // multiply by (-1)
                                                         // EITHER WAY.
-                //                pItemParty->SetAmount(lAbsoluteAmount*(-1));
+//              pItemParty->SetAmount(absoluteAmount*(-1));
                 // // "paymentReceipt" is otherwise ambigious about whether you
                 // are paying or being paid.
                 // This is also like market receipts, which use negative and
@@ -3031,12 +3031,12 @@ auto OTSmartContract::MoveAcctFundsStr(
         return false;
     }
 
-    const std::int64_t lAmount = String::StringToLong(str_Amount.c_str());
+    const OTAmount amount = opentxs::Factory::Amount(str_Amount);
 
-    if (lAmount <= 0) {
+    if (amount <= 0) {
         LogNormal(OT_METHOD)(__FUNCTION__)(
-            ": Error: lAmount cannot be 0 or <0. "
-            "(Value passed in was ")(lAmount)(").")
+            ": Error: amount cannot be 0 or <0. "
+            "(Value passed in was ")(amount->str())(").")
             .Flush();
         return false;
     }
@@ -3273,7 +3273,7 @@ auto OTSmartContract::MoveAcctFundsStr(
                                                      // money.
 
     bool bMoved = MoveFunds(
-        lAmount,
+        amount,
         theFromAcctID,
         theFromAgentID,
         theToAcctID,
@@ -5479,7 +5479,7 @@ auto OTSmartContract::ProcessXMLNode(irr::io::IrrXMLReader*& xml)
 //
 // true == success, false == failure.
 auto OTSmartContract::MoveFunds(
-    const std::int64_t& lAmount,
+    const Amount& amount,
     const Identifier& SOURCE_ACCT_ID,      // GetSenderAcctID();
     const identifier::Nym& SENDER_NYM_ID,  // GetSenderNymID();
     const Identifier& RECIPIENT_ACCT_ID,   // GetRecipientAcctID();
@@ -5492,10 +5492,10 @@ auto OTSmartContract::MoveFunds(
     Nym_p pServerNym = pCron->GetServerNym();
     OT_ASSERT(nullptr != pServerNym);
 
-    if (lAmount <= 0) {
+    if (amount <= 0) {
         LogNormal(OT_METHOD)(__FUNCTION__)(
-            ":  Error: lAmount cannot be 0 or <0. "
-            "(Value passed in was ")(lAmount)(").")
+            ":  Error: amount cannot be 0 or <0. "
+            "(Value passed in was ")(amount->str())(").")
             .Flush();
         return false;
     }
@@ -5982,15 +5982,15 @@ auto OTSmartContract::MoveFunds(
             // failure.
 
             // Make sure he can actually afford it...
-            if (sourceAccount.get().GetBalance() >= lAmount) {
+            if (sourceAccount.get().GetBalance() >= amount) {
                 // Debit the source account.
-                bool bMoveSender = sourceAccount.get().Debit(lAmount);
+                bool bMoveSender = sourceAccount.get().Debit(amount);
                 bool bMoveRecipient = false;
 
                 // IF success, credit the recipient.
                 if (bMoveSender) {
                     bMoveRecipient = recipientAccount.get().Credit(
-                        lAmount);  // <=== CREDIT FUNDS
+                        amount);  // <=== CREDIT FUNDS
 
                     // Okay, we already took it from the source account.
                     // But if we FAIL to credit the recipient, then we need to
@@ -5999,8 +5999,8 @@ auto OTSmartContract::MoveFunds(
                     // it's really superfluous.)
                     //
                     if (!bMoveRecipient)
-                        sourceAccount.get().Credit(lAmount);  // put the money
-                                                              // back
+                        sourceAccount.get().Credit(amount); // put the money
+                                                            // back
                     else
                         bSuccess = true;
                 }
@@ -6030,11 +6030,11 @@ auto OTSmartContract::MoveFunds(
                 pItemRecip->SetStatus(
                     Item::acknowledgement);  // recipientAccount
 
-                pItemSend->SetAmount(lAmount * (-1));  // "paymentReceipt" is
+                pItemSend->SetAmount(amount * (-1));  // "paymentReceipt" is
                                                        // otherwise ambigious
                                                        // about whether you are
                                                        // paying or being paid.
-                pItemRecip->SetAmount(lAmount);  // So, I decided for payment
+                pItemRecip->SetAmount(amount);  // So, I decided for payment
                                                  // and market receipts, to use
                                                  // negative and positive
                                                  // amounts.

@@ -57,6 +57,7 @@
 #include "opentxs/core/trade/OTOffer.hpp"
 #include "opentxs/core/trade/OTTrade.hpp"
 #include "opentxs/core/transaction/Helpers.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/identity/Nym.hpp"
 #include "opentxs/otx/consensus/Base.hpp"
 #include "opentxs/otx/consensus/ManagedNumber.hpp"
@@ -2024,12 +2025,12 @@ auto OT_API::ProposePaymentPlan(
     const identifier::Nym& RECIPIENT_NYM_ID,
     // ----------------------------------------  // If it's above zero, the
     // initial
-    const std::int64_t& INITIAL_PAYMENT_AMOUNT,  // amount will be processed
+    const Amount& INITIAL_PAYMENT_AMOUNT,  // amount will be processed
                                                  // after
     const std::chrono::seconds INITIAL_PAYMENT_DELAY,  // delay (seconds from
                                                        // now.)
     // ----------------------------------------  // AND SEPARATELY FROM THIS...
-    const std::int64_t& PAYMENT_PLAN_AMOUNT,  // The regular amount charged,
+    const Amount& PAYMENT_PLAN_AMOUNT,  // The regular amount charged,
     const std::chrono::seconds PAYMENT_PLAN_DELAY,   // which begins occuring
                                                      // after delay
     const std::chrono::seconds PAYMENT_PLAN_PERIOD,  // (seconds from now) and
@@ -2120,7 +2121,7 @@ auto OT_API::ProposePaymentPlan(
     bool bSuccessSetInitialPayment = true;
     // the default, in case user chooses not to have a payment plan.
     bool bSuccessSetPaymentPlan = true;
-    if ((INITIAL_PAYMENT_AMOUNT > 0) &&
+    if ((INITIAL_PAYMENT_AMOUNT > api_.Factory().Amount()) &&
         (INITIAL_PAYMENT_DELAY >= std::chrono::seconds{0})) {
         // The Initial payment delay is measured in seconds, starting from the
         // "Creation Date".
@@ -2144,7 +2145,7 @@ auto OT_API::ProposePaymentPlan(
     //                  "3 months        ==  7776000 Seconds\n"
     //                  "6 months        == 15552000 Seconds\n\n"
     //
-    if (PAYMENT_PLAN_AMOUNT > 0)  // If there are regular payments.
+    if (PAYMENT_PLAN_AMOUNT > api_.Factory().Amount())  // If there are regular payments.
     {
         // The payment plan delay is measured in seconds, starting from the
         // "Creation Date".
@@ -2623,7 +2624,8 @@ auto OT_API::GenerateBasketExchange(
                 .Flush();
         } else {
             pRequestBasket.reset(api_.Factory()
-                                     .Basket(currencies, contract->Weight())
+                                 .Basket(currencies, api_.Factory().Amount(static_cast<std::int64_t>(contract->Weight()))
+                                             )
                                      .release());
             OT_ASSERT_MSG(
                 false != bool(pRequestBasket),
@@ -3040,7 +3042,8 @@ auto OT_API::getTransactionNumbers(otx::context::Server& context) const
         *output,
         api_.Factory().NymID(),
         api_.Factory().Identifier(),
-        reason);
+        reason,
+        api_.Factory().Amount());
 
     if (1 > requestNum) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
@@ -3138,9 +3141,9 @@ auto OT_API::payDividend(
         return output;
     }
 
-    OT_ASSERT(issuerAccount.get().GetBalance() <= 0);
+    OT_ASSERT(issuerAccount.get().GetBalance() <= api_.Factory().Amount());
 
-    if (0 == issuerAccount.get().GetBalance()) {
+    if (issuerAccount.get().GetBalance() == api_.Factory().Amount()) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
             ": Failure: There are no shares issued for that instrument "
             "definition.")
@@ -3151,7 +3154,7 @@ auto OT_API::payDividend(
         return output;
     }
 
-    if (AMOUNT_PER_SHARE <= 0) {
+    if (AMOUNT_PER_SHARE <= api_.Factory().Amount()) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
             ": Failure: The amount per share must be larger than zero.")
             .Flush();
@@ -3165,14 +3168,15 @@ auto OT_API::payDividend(
     // let's say $5, resulting in a totalCost of $500,000 that must be
     // available in the dollar account (in order to successfully pay this
     // dividend.)
-    const Amount totalCost =
-        ((-1) * issuerAccount.get().GetBalance()) * AMOUNT_PER_SHARE;
+    const OTAmount totalCost =
+        api_.Factory().Amount(issuerAccount.get().GetBalance() *
+        api_.Factory().Amount(-1) * api_.Factory().Amount(AMOUNT_PER_SHARE));
 
-    if (dividendAccount.get().GetBalance() < totalCost) {
+    if (totalCost >= dividendAccount.get().GetBalance()) {
         LogOutput(OT_METHOD)(__FUNCTION__)(": Failure: There's not enough (")(
-            dividendAccount.get().GetBalance())(
+            dividendAccount.get().GetBalance().str())(
             ") in the source account, to cover the total cost of the dividend "
-            "(")(totalCost)(").")
+            "(")(totalCost->str())(").")
             .Flush();
 
         return output;
@@ -3211,7 +3215,7 @@ auto OT_API::payDividend(
     auto theRequestVoucher{
         api_.Factory().Cheque(serverID, SHARES_INSTRUMENT_DEFINITION_ID)};
     const bool bIssueCheque = theRequestVoucher->IssueCheque(
-        AMOUNT_PER_SHARE,  // <====== Server needs this (AMOUNT_PER_SHARE.)
+        std::stoll(AMOUNT_PER_SHARE.str()),  // <====== Server needs this (AMOUNT_PER_SHARE.)
         transactionNum,    // server actually ignores this and supplies its
                            // own transaction number for any vouchers.
         VALID_FROM,
@@ -3288,7 +3292,7 @@ auto OT_API::payDividend(
     std::shared_ptr<Item> pitem{item.release()};
     transaction->AddItem(pitem);
     std::unique_ptr<Item> balanceItem(inbox->GenerateBalanceStatement(
-        totalCost * (-1),
+        api_.Factory().Amount(-1) * totalCost,
         *transaction,
         context,
         dividendAccount.get(),
@@ -3362,7 +3366,7 @@ auto OT_API::withdrawVoucher(
     const Identifier& accountID,
     const identifier::Nym& RECIPIENT_NYM_ID,
     const String& CHEQUE_MEMO,
-    const Amount amount) const -> CommandResult
+    const Amount& amount) const -> CommandResult
 {
     rLock lock(
         lock_callback_({context.Nym()->ID().str(), context.Notary().str()}));
@@ -4216,11 +4220,11 @@ auto OT_API::issueMarketOffer(
                                                 // for sale or purchase.
                                                 // Will be multiplied by
                                                 // minimum increment.
-    const Amount PRICE_LIMIT,                   // Per Minimum Increment...
+    const Amount& PRICE_LIMIT,                   // Per Minimum Increment...
     const bool bBuyingOrSelling,  //  BUYING == false, SELLING == true.
     const std::chrono::seconds tLifespanInSeconds,  // 86400 == 1 day.
     const char STOP_SIGN,  // For stop orders, set to '<' or '>'
-    const Amount ACTIVATION_PRICE) const
+    const Amount& ACTIVATION_PRICE) const
     -> CommandResult  // For stop orders, this is
                       // threshhold price.
 {
@@ -4883,7 +4887,8 @@ auto OT_API::unregisterNym(otx::context::Server& context) const -> CommandResult
         *message,
         api_.Factory().NymID(),
         api_.Factory().Identifier(),
-        reason);
+        reason,
+        api_.Factory().Amount());
 
     if (0 < requestNum) {
         result = context.SendMessage(
@@ -5392,7 +5397,7 @@ auto OT_API::add_accept_item(
     const TransactionNumber referenceNumber,
     const String& note,
     const identity::Nym& nym,
-    const Amount amount,
+    const Amount& amount,
     const String& inRefTo,
     OTTransaction& processInbox) const -> bool
 {

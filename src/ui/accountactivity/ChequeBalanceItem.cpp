@@ -47,20 +47,20 @@ ChequeBalanceItem::ChequeBalanceItem(
         extract_custom<proto::PaymentEvent>(custom, 1));
 }
 
-auto ChequeBalanceItem::effective_amount() const noexcept -> opentxs::Amount
+auto ChequeBalanceItem::effective_amount() const noexcept -> OTAmount
 {
     sLock lock(shared_lock_);
-    auto amount{0};
-    opentxs::Amount sign{0};
+    auto amount = api_.Factory().Amount();
+    auto sign = api_.Factory().Amount();
 
     if (cheque_) { amount = cheque_->GetAmount(); }
 
     switch (type_) {
         case StorageBox::OUTGOINGCHEQUE: {
-            sign = -1;
+            sign = api_.Factory().Amount(-1);
         } break;
         case StorageBox::INCOMINGCHEQUE: {
-            sign = 1;
+            sign = api_.Factory().Amount(1);
         } break;
         case StorageBox::SENTPEERREQUEST:
         case StorageBox::INCOMINGPEERREQUEST:

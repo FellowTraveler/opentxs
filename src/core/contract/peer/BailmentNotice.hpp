@@ -66,7 +66,7 @@ private:
     const OTServerID server_;
     const OTIdentifier requestID_;
     const std::string txid_;
-    const Amount amount_;
+    const OTAmount amount_;
 
     auto clone() const noexcept -> BailmentNotice* final
     {

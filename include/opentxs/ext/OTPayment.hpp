@@ -13,6 +13,7 @@
 #include <memory>
 
 #include "opentxs/Types.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Cheque.hpp"
 #include "opentxs/core/Contract.hpp"
 #include "opentxs/core/Identifier.hpp"
@@ -132,7 +133,7 @@ public:
     // Once you "Instantiate" the first time, then these values are set, if
     // available, and can be queried thereafter from *this. Otherwise, these
     // functions will return false.
-    OPENTXS_EXPORT bool GetAmount(Amount& lOutput) const;
+    OPENTXS_EXPORT bool GetAmount(OTAmount& lOutput) const;
     // Only works for payment plans and smart contracts. Gets the opening
     // transaction number for a given Nym, if applicable. (Or closing number for
     // a given asset account.)
@@ -240,7 +241,7 @@ protected:
     // remitter, whereas the "sender" is the server Nym whose account the
     // voucher is drawn on.
     bool m_bHasRemitter;
-    Amount m_lAmount;
+    OTAmount amount_;
     TransactionNumber m_lTransactionNum;
     TransactionNumber m_lTransNumDisplay;
     // Memo, Consideration, Subject, etc.

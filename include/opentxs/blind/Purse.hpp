@@ -78,7 +78,7 @@ public:
         const PasswordPrompt& reason) const = 0;
     OPENTXS_EXPORT virtual bool Verify(
         const api::server::internal::Manager& server) const = 0;
-    OPENTXS_EXPORT virtual Amount Value() const = 0;
+    OPENTXS_EXPORT virtual const Amount& Value() const = 0;
 
     OPENTXS_EXPORT virtual bool AddNym(
         const identity::Nym& nym,

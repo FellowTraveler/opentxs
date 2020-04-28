@@ -24,6 +24,7 @@
 #if OT_BLOCKCHAIN
 #include "opentxs/blockchain/p2p/Address.hpp"
 #endif  // OT_BLOCKCHAIN
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Armored.hpp"
 #include "opentxs/core/Data.hpp"
 #include "opentxs/core/Identifier.hpp"
@@ -104,6 +105,14 @@ namespace api
 class Factory : virtual public Primitives
 {
 public:
+    OPENTXS_EXPORT virtual OTAmount Amount() const = 0;
+    OPENTXS_EXPORT virtual OTAmount Amount(const opentxs::Amount& input) const = 0;
+    OPENTXS_EXPORT virtual OTAmount Amount(const std::int8_t input) const = 0;
+    OPENTXS_EXPORT virtual OTAmount Amount(const std::int16_t input) const = 0;
+    OPENTXS_EXPORT virtual OTAmount Amount(const std::int32_t input) const = 0;
+    OPENTXS_EXPORT virtual OTAmount Amount(const std::int64_t input) const = 0;
+    OPENTXS_EXPORT virtual OTAmount Amount(const std::string input) const = 0;
+
     OPENTXS_EXPORT virtual OTArmored Armored() const = 0;
     OPENTXS_EXPORT virtual OTArmored Armored(
         const std::string& input) const = 0;
@@ -133,7 +142,7 @@ public:
         const identifier::Server& serverID,
         const Identifier& requestID,
         const std::string& txid,
-        const Amount& amount,
+        const opentxs::Amount& amount,
         const opentxs::PasswordPrompt& reason) const noexcept(false) = 0;
     OPENTXS_EXPORT virtual OTBailmentNotice BailmentNotice(
         const Nym_p& nym,
@@ -161,14 +170,14 @@ public:
     OPENTXS_EXPORT virtual std::unique_ptr<opentxs::Basket> Basket() const = 0;
     OPENTXS_EXPORT virtual std::unique_ptr<opentxs::Basket> Basket(
         std::int32_t nCount,
-        std::int64_t lMinimumTransferAmount) const = 0;
+        const opentxs::Amount& lMinimumTransferAmount) const = 0;
     OPENTXS_EXPORT virtual OTBasketContract BasketContract(
         const Nym_p& nym,
         const std::string& shortname,
         const std::string& name,
         const std::string& symbol,
         const std::string& terms,
-        const std::uint64_t weight,
+        const opentxs::Amount& weight,
         const proto::ContactItemType unitOfAccount,
         const VersionNumber version) const noexcept(false) = 0;
     OPENTXS_EXPORT virtual OTBasketContract BasketContract(
@@ -456,7 +465,7 @@ public:
         const identifier::Nym& recipientID,
         const identifier::UnitDefinition& unitID,
         const identifier::Server& serverID,
-        const std::uint64_t& amount,
+        const opentxs::Amount& amount,
         const std::string& terms,
         const opentxs::PasswordPrompt& reason) const noexcept(false) = 0;
     OPENTXS_EXPORT virtual OTOutbailmentRequest OutbailmentRequest(
@@ -542,7 +551,7 @@ public:
         const otx::context::Server& context,
         const identifier::UnitDefinition& unit,
         const blind::Mint& mint,
-        const Amount totalValue,
+        const opentxs::Amount& totalValue,
         const opentxs::PasswordPrompt& reason,
         const proto::CashType type = proto::CASHTYPE_LUCRE) const = 0;
     OPENTXS_EXPORT virtual std::unique_ptr<blind::Purse> Purse(

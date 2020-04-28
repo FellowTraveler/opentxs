@@ -37,7 +37,7 @@
 #if OT_CASH
 #include "opentxs/blind/Mint.hpp"
 #endif  // OT_CASH
-#include "opentxs/core/Data.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Flag.hpp"
 #include "opentxs/core/Log.hpp"
 #include "opentxs/core/LogSource.hpp"
@@ -227,16 +227,16 @@ void Manager::generate_mint(
         Factory().UnitID(unitID),
         Factory().ServerID(serverID),
         nym,
-        1,
-        10,
-        100,
-        1000,
-        10000,
-        100000,
-        1000000,
-        10000000,
-        100000000,
-        1000000000,
+        Amount::Factory(1),
+        Factory().Amount(10),
+        Factory().Amount(100),
+        Factory().Amount(1000),
+        Factory().Amount(10000),
+        Factory().Amount(100000),
+        Factory().Amount(1000000),
+        Factory().Amount(10000000),
+        Factory().Amount(100000000),
+        Factory().Amount(1000000000),
         mint_key_size_.load(),
         reason_);
     opentxs::Lock mintLock(mint_lock_);

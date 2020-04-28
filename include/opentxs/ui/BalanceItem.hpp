@@ -51,6 +51,7 @@ class BalanceItem : virtual public ListRow
 {
 public:
     OPENTXS_EXPORT virtual opentxs::Amount Amount() const noexcept = 0;
+//    OPENTXS_EXPORT virtual std::string Amount() const noexcept = 0;
     OPENTXS_EXPORT virtual std::vector<std::string> Contacts()
         const noexcept = 0;
     OPENTXS_EXPORT virtual std::string DisplayAmount() const noexcept = 0;

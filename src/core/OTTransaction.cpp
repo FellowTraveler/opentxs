@@ -60,8 +60,8 @@ OTTransaction::OTTransaction(const api::internal::Core& core)
     : OTTransactionType(core)
     , m_pParent(nullptr)
     , m_bIsAbbreviated(false)
-    , m_lAbbrevAmount(0)
-    , m_lDisplayAmount(0)
+    , m_lAbbrevAmount(api_.Factory().Amount())
+    , m_lDisplayAmount(api_.Factory().Amount())
     , m_lInRefDisplay(0)
     , m_Hash(Identifier::Factory())
     , m_DATE_SIGNED()
@@ -96,8 +96,8 @@ OTTransaction::OTTransaction(
           theOwner.GetPurportedNotaryID())
     , m_pParent(&theOwner)
     , m_bIsAbbreviated(false)
-    , m_lAbbrevAmount(0)
-    , m_lDisplayAmount(0)
+    , m_lAbbrevAmount(api_.Factory().Amount())
+    , m_lDisplayAmount(api_.Factory().Amount())
     , m_lInRefDisplay(0)
     , m_Hash(Identifier::Factory())
     , m_DATE_SIGNED()
@@ -139,8 +139,8 @@ OTTransaction::OTTransaction(
           theOriginType)
     , m_pParent(nullptr)
     , m_bIsAbbreviated(false)
-    , m_lAbbrevAmount(0)
-    , m_lDisplayAmount(0)
+    , m_lAbbrevAmount(api_.Factory().Amount())
+    , m_lDisplayAmount(api_.Factory().Amount())
     , m_lInRefDisplay(0)
     , m_Hash(Identifier::Factory())
     , m_DATE_SIGNED()
@@ -178,8 +178,8 @@ OTTransaction::OTTransaction(
           theOriginType)
     , m_pParent(nullptr)
     , m_bIsAbbreviated(false)
-    , m_lAbbrevAmount(0)
-    , m_lDisplayAmount(0)
+    , m_lAbbrevAmount(api_.Factory().Amount())
+    , m_lDisplayAmount(api_.Factory().Amount())
     , m_lInRefDisplay(0)
     , m_Hash(Identifier::Factory())
     , m_DATE_SIGNED()
@@ -221,8 +221,8 @@ OTTransaction::OTTransaction(
     const Time the_DATE_SIGNED,
     const transactionType theType,
     const String& strHash,
-    const std::int64_t& lAdjustment,
-    const std::int64_t& lDisplayValue,
+    const Amount& lAdjustment,
+    const Amount& lDisplayValue,
     const std::int64_t& lClosingNum,
     const std::int64_t& lRequestNum,
     const bool bReplyTransSuccess,
@@ -236,8 +236,8 @@ OTTransaction::OTTransaction(
           theOriginType)
     , m_pParent(nullptr)
     , m_bIsAbbreviated(true)
-    , m_lAbbrevAmount(lAdjustment)
-    , m_lDisplayAmount(lDisplayValue)
+    , m_lAbbrevAmount(api_.Factory().Amount(lAdjustment))
+    , m_lDisplayAmount(api_.Factory().Amount(lDisplayValue))
     , m_lInRefDisplay(lInRefDisplay)
     , m_Hash(Identifier::Factory(strHash))
     , m_DATE_SIGNED()
@@ -265,8 +265,8 @@ OTTransaction::OTTransaction(
     m_Type =
         theType;  // This one is same story as date signed. Setting it back.
     m_lClosingTransactionNo = lClosingNum;
-    m_lAbbrevAmount = lAdjustment;
-    m_lDisplayAmount = lDisplayValue;
+    m_lAbbrevAmount = api_.Factory().Amount(lAdjustment);
+    m_lDisplayAmount = api_.Factory().Amount(lDisplayValue);
     m_lInRefDisplay = lInRefDisplay;
 
     m_lRequestNumber = lRequestNum;             // for replyNotice
@@ -2078,7 +2078,7 @@ auto OTTransaction::VerifyBalanceReceipt(
     const char* pszLedgerType = nullptr;
     // For measuring the amount of the total of items in the inbox that have
     // changed the balance (like cheque receipts)
-    std::int64_t lReceiptBalanceChange = 0;
+    auto lReceiptBalanceChange = api_.Factory().Amount();
 
     // Notice here, I'm back to using pBalanceItem instead of
     // pItemWithIssuedList, since this is the inbox/outbox section...
@@ -2097,7 +2097,7 @@ auto OTTransaction::VerifyBalanceReceipt(
     for (std::int32_t i = 0; i < pBalanceItem->GetItemCount(); i++) {
         // for outbox calculations. (It's the only case where GetReceiptAmount()
         // is wrong and needs -1 multiplication.)
-        std::int64_t lReceiptAmountMultiplier = 1;
+        OTAmount lReceiptAmountMultiplier = api_.Factory().Amount(std::int8_t(1));
         auto pSubItem = pBalanceItem->GetItem(i);
 
         OT_ASSERT(false != bool(pSubItem));
@@ -2310,7 +2310,7 @@ auto OTTransaction::VerifyBalanceReceipt(
         if (false == bool(pTransaction)) {
             LogNormal(OT_METHOD)(__FUNCTION__)(": Expected ")(pszLedgerType)(
                 " transaction (")(lTempTransactionNum)(") not found. (Amount ")(
-                pSubItem->GetAmount())(".)")
+                pSubItem->GetAmount().str())(".)")
                 .Flush();
 
             return false;
@@ -2339,17 +2339,17 @@ auto OTTransaction::VerifyBalanceReceipt(
             return false;
         }
 
-        std::int64_t lTransactionAmount =
-            pTransaction->GetReceiptAmount(reason);
+        OTAmount lTransactionAmount =
+        api_.Factory().Amount(Transaction->GetReceiptAmount(reason));
         lTransactionAmount *= lReceiptAmountMultiplier;
 
         if (pSubItem->GetAmount() != lTransactionAmount) {
             LogNormal(OT_METHOD)(__FUNCTION__)(": ")(pszLedgerType)(
                 " transaction (")(lTempTransactionNum)(
-                ") amounts don't match: Report says ")(pSubItem->GetAmount())(
+                ") amounts don't match: Report says ")(pSubItem->GetAmount().str())(
                 ", but expected ")(lTransactionAmount)(". Trans recpt amt: ")(
-                pTransaction->GetReceiptAmount(reason))(
-                ", (pBalanceItem->GetAmount() == ")(pBalanceItem->GetAmount())(
+                pTransaction->GetReceiptAmount(reason).str())(
+                ", (pBalanceItem->GetAmount() == ")(pBalanceItem->GetAmount().str())(
                 ".)")
                 .Flush();
 
@@ -2660,10 +2660,10 @@ auto OTTransaction::VerifyBalanceReceipt(
                 (pTransaction->GetReceiptAmount(reason))) {
                 LogNormal(OT_METHOD)(__FUNCTION__)(": Inbox transaction (")(
                     pSubItem->GetTransactionNum())(") amounts don't match: ")(
-                    pSubItem->GetAmount())(", expected ")(
-                    pTransaction->GetReceiptAmount(reason))(
+                    pSubItem->GetAmount().str())(", expected ")(
+                    pTransaction->GetReceiptAmount(reason).str())(
                     ". (pBalanceItem->GetAmount() == ")(
-                    pBalanceItem->GetAmount())(").")
+                    pBalanceItem->GetAmount().str())(").")
                     .Flush();
                 return false;
             }
@@ -2965,7 +2965,7 @@ auto OTTransaction::VerifyBalanceReceipt(
             lActualDifference)(") plus current acct balance (")(
             account.get().GetBalance())(
             ") is NOT equal to last signed balance (")(
-            pBalanceItem->GetAmount())(").")
+            pBalanceItem->GetAmount().str())(").")
             .Flush();
 
         return false;

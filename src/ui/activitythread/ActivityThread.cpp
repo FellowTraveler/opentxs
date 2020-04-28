@@ -343,7 +343,7 @@ auto ActivityThread::Pay(
 
     try {
         const auto contract = api_.Wallet().UnitDefinition(unitID);
-        auto value = Amount{0};
+        auto value = api_.Factory().Amount();
         const auto converted =
             contract->StringToAmountLocale(value, amount, "", "");
 
@@ -366,13 +366,13 @@ auto ActivityThread::Pay(
 }
 
 auto ActivityThread::Pay(
-    const Amount amount,
+    const Amount& amount,
     const Identifier& sourceAccount,
     const std::string& memo,
     const PaymentType type) const noexcept -> bool
 {
-    if (0 >= amount) {
-        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount: (")(amount)(")")
+    if (amount < 0) {
+        LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount: (")(amount.str())(")")
             .Flush();
 
         return false;
@@ -501,7 +501,7 @@ void ActivityThread::process_thread(const Message& message) noexcept
 }
 
 auto ActivityThread::send_cheque(
-    const Amount amount,
+    const Amount& amount,
     const Identifier& sourceAccount,
     const std::string& memo) const noexcept -> bool
 {

@@ -19,6 +19,7 @@
 #include "opentxs/core/Data.hpp"
 #include "opentxs/core/Log.hpp"
 #include "opentxs/core/LogSource.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/crypto/key/Symmetric.hpp"
 #include "opentxs/protobuf/CashEnums.pb.h"
 #include "opentxs/protobuf/Enums.pb.h"
@@ -66,7 +67,7 @@ auto Factory::Token(
     const api::internal::Core& api,
     const identity::Nym& owner,
     const blind::Mint& mint,
-    const blind::Token::Denomination value,
+    const opentxs::Amount& value,
     blind::Purse& purse,
     const opentxs::PasswordPrompt& reason) -> std::unique_ptr<blind::Token>
 {
@@ -95,7 +96,7 @@ Token::Token(
     const identifier::Server& notary,
     const identifier::UnitDefinition& unit,
     const std::uint64_t series,
-    const Denomination denomination,
+    const Amount& denomination,
     const Time validFrom,
     const Time validTo,
     const VersionNumber version)
@@ -105,7 +106,7 @@ Token::Token(
     , notary_(notary)
     , unit_(unit)
     , series_(series)
-    , denomination_(denomination)
+    , denomination_(api_.Factory().Amount(denomination))
     , valid_from_(validFrom)
     , valid_to_(validTo)
     , type_(type)
@@ -141,7 +142,8 @@ Token::Token(
           identifier::Server::Factory(in.notary()),
           identifier::UnitDefinition::Factory(in.mint()),
           in.series(),
-          in.denomination(),
+          api_.Factory().Amount(
+            std::to_string(in.denomination())),
           Clock::from_time_t(in.validfrom()),
           Clock::from_time_t(in.validto()),
           in.version())
@@ -154,7 +156,7 @@ Token::Token(
     const VersionNumber version,
     const proto::TokenState state,
     const std::uint64_t series,
-    const Denomination denomination,
+    const Amount& denomination,
     const Time validFrom,
     const Time validTo)
     : Token(
@@ -165,7 +167,7 @@ Token::Token(
           purse.Notary(),
           purse.Unit(),
           series,
-          denomination,
+          api_.Factory().Amount(denomination),
           validFrom,
           validTo,
           version)
@@ -216,7 +218,8 @@ auto Token::Serialize() const -> proto::Token
     output.set_notary(notary_->str());
     output.set_mint(unit_->str());
     output.set_series(series_);
-    output.set_denomination(denomination_);
+    output.set_denomination(
+        std::stoull(denomination_->str()));
     output.set_validfrom(Clock::to_time_t(valid_from_));
     output.set_validto(Clock::to_time_t(valid_to_));
 

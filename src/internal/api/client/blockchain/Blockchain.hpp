@@ -175,7 +175,7 @@ auto SyncTables() noexcept -> const std::vector<SyncTableData>&;
 
 namespace opentxs::api::client::blockchain::internal
 {
-using ActivityMap = std::map<Coin, std::pair<blockchain::Key, Amount>>;
+    using ActivityMap = std::map<Coin, std::pair<blockchain::Key, std::uint64_t>>;
 
 struct BalanceList : virtual public blockchain::BalanceList {
     virtual auto AddHDNode(
@@ -242,7 +242,7 @@ struct BalanceTree : virtual public blockchain::BalanceTree {
         const std::string& id,
         internal::BalanceNode* node) const noexcept = 0;
     virtual auto LookupUTXO(const Coin& coin) const noexcept
-        -> std::optional<std::pair<Key, Amount>> = 0;
+        -> std::optional<std::pair<Key, OTAmount>> = 0;
     virtual auto HDChain(const Identifier& account) const noexcept(false)
         -> const blockchain::internal::HD& = 0;
     virtual auto Parent() const noexcept

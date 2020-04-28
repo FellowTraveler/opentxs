@@ -10,6 +10,8 @@
 
 #include "opentxs/Forward.hpp"  // IWYU pragma: associated
 
+#include "opentxs/core/Amount.hpp"
+
 #include <cstdint>
 #include <string>
 
@@ -46,14 +48,14 @@ public:
     OPENTXS_EXPORT static const VersionNumber MaxVersion;
 
     OPENTXS_EXPORT static std::string formatLongAmount(
-        const Amount lValue,
+        const Amount& lValue,
         const std::int32_t nFactor = 100,
         const std::int32_t nPower = 2,
         const char* szCurrencySymbol = "",
         const char* szThousandSeparator = ",",
         const char* szDecimalPoint = ".");
     OPENTXS_EXPORT static bool ParseFormatted(
-        Amount& lResult,
+        OTAmount& lResult,
         const std::string& str_input,
         const std::int32_t nFactor = 100,
         const std::int32_t nPower = 2,
@@ -73,12 +75,12 @@ public:
         const std::string& dataFolder,
         const Identifier& theAcctID) const = 0;
     OPENTXS_EXPORT virtual bool FormatAmountLocale(
-        Amount amount,
+        const Amount& amount,
         std::string& str_output,
         const std::string& str_thousand,
         const std::string& str_decimal) const = 0;
     OPENTXS_EXPORT virtual bool FormatAmountWithoutSymbolLocale(
-        Amount amount,
+        const Amount& amount,
         std::string& str_output,
         const std::string& str_thousand,
         const std::string& str_decimal) const = 0;
@@ -87,7 +89,7 @@ public:
     OPENTXS_EXPORT virtual const std::string& GetCurrencySymbol() const = 0;
     OPENTXS_EXPORT virtual SerializedType PublicContract() const = 0;
     OPENTXS_EXPORT virtual bool StringToAmountLocale(
-        Amount& amount,
+        OTAmount& amount,
         const std::string& str_input,
         const std::string& str_thousand,
         const std::string& str_decimal) const = 0;

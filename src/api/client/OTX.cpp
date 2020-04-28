@@ -63,6 +63,7 @@
 #include "opentxs/core/identifier/Nym.hpp"
 #include "opentxs/core/identifier/Server.hpp"
 #include "opentxs/core/identifier/UnitDefinition.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/ext/OTPayment.hpp"
 #include "opentxs/identity/Nym.hpp"
 #include "opentxs/network/zeromq/Context.hpp"
@@ -1324,7 +1325,7 @@ auto OTX::InitiateOutbailment(
     const identifier::Server& serverID,
     const identifier::Nym& targetNymID,
     const identifier::UnitDefinition& instrumentDefinitionID,
-    const Amount amount,
+    const Amount& amount,
     const std::string& message,
     const SetID setID) const -> OTX::BackgroundTask
 {
@@ -1527,7 +1528,7 @@ auto OTX::NotifyBailment(
     const identifier::UnitDefinition& instrumentDefinitionID,
     const Identifier& requestID,
     const std::string& txid,
-    const Amount amount,
+    const Amount& amount,
     const SetID setID) const -> OTX::BackgroundTask
 {
     CHECK_ARGS(localNymID, serverID, instrumentDefinitionID)
@@ -2010,7 +2011,7 @@ auto OTX::SendCheque(
     const identifier::Nym& localNymID,
     const Identifier& sourceAccountID,
     const Identifier& recipientContactID,
-    const Amount value,
+    const Amount& value,
     const std::string& memo,
     const Time validFrom,
     const Time validTo) const -> OTX::BackgroundTask
@@ -2032,7 +2033,7 @@ auto OTX::SendCheque(
         return error_task();
     }
 
-    if (0 >= value) {
+    if (Amount::Factory() >= value) {
         LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount.").Flush();
 
         return error_task();
@@ -2062,7 +2063,7 @@ auto OTX::SendExternalTransfer(
     const identifier::Server& serverID,
     const Identifier& sourceAccountID,
     const Identifier& targetAccountID,
-    const std::int64_t value,
+    const Amount& value,
     const std::string& memo) const -> OTX::BackgroundTask
 {
     CHECK_ARGS(localNymID, serverID, targetAccountID)
@@ -2106,7 +2107,7 @@ auto OTX::SendTransfer(
     const identifier::Server& serverID,
     const Identifier& sourceAccountID,
     const Identifier& targetAccountID,
-    const std::int64_t value,
+    const Amount& value,
     const std::string& memo) const -> OTX::BackgroundTask
 {
     CHECK_ARGS(localNymID, serverID, targetAccountID)
@@ -2431,7 +2432,7 @@ auto OTX::WithdrawCash(
     const identifier::Nym& nymID,
     const identifier::Server& serverID,
     const Identifier& account,
-    const Amount amount) const -> OTX::BackgroundTask
+    const Amount& amount) const -> OTX::BackgroundTask
 {
     CHECK_ARGS(nymID, serverID, account)
 

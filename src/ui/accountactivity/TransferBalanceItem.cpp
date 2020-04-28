@@ -47,29 +47,29 @@ TransferBalanceItem::TransferBalanceItem(
         extract_custom<proto::PaymentEvent>(custom, 1));
 }
 
-auto TransferBalanceItem::effective_amount() const noexcept -> opentxs::Amount
+auto TransferBalanceItem::effective_amount() const noexcept -> OTAmount
 {
     sLock lock(shared_lock_);
-    auto amount{0};
-    opentxs::Amount sign{0};
+    auto amount = api_.Factory().Amount();
+    auto sign = api_.Factory().Amount();
 
     if (transfer_) { amount = transfer_->GetAmount(); }
 
     switch (type_) {
         case StorageBox::OUTGOINGTRANSFER: {
-            sign = -1;
+            sign = api_.Factory().Amount(-1);
         } break;
         case StorageBox::INCOMINGTRANSFER: {
-            sign = 1;
+            sign = api_.Factory().Amount(1);
         } break;
         case StorageBox::INTERNALTRANSFER: {
             const auto in =
                 parent_.AccountID() == transfer_->GetDestinationAcctID().str();
 
             if (in) {
-                sign = 1;
+                sign = api_.Factory().Amount(1);
             } else {
-                sign = -1;
+                sign = api_.Factory().Amount(-1);
             }
         } break;
         case StorageBox::SENTPEERREQUEST:

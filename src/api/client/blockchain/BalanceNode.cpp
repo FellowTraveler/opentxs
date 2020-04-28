@@ -361,7 +361,7 @@ void BalanceNode::process_spent(
     const Lock& lock,
     const Coin& coin,
     const blockchain::Key key,
-    const Amount value) const noexcept
+    const std::uint64_t value) const noexcept
 {
     auto targetValue{value};
 
@@ -382,7 +382,7 @@ void BalanceNode::process_unspent(
     const Lock& lock,
     const Coin& coin,
     const blockchain::Key key,
-    const Amount value) const noexcept
+    const std::uint64_t value) const noexcept
 {
     if (0 == spent_.count(coin)) {
         // Normal case

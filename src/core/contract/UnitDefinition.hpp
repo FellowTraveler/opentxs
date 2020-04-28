@@ -65,12 +65,12 @@ public:
         const std::string& dataFolder,
         const Identifier& theAcctID) const -> bool override;
     auto FormatAmountLocale(
-        std::int64_t amount,
+        const Amount& amount,
         std::string& str_output,
         const std::string& str_thousand,
         const std::string& str_decimal) const -> bool override;
     auto FormatAmountWithoutSymbolLocale(
-        std::int64_t amount,
+        const Amount& amount,
         std::string& str_output,
         const std::string& str_thousand,
         const std::string& str_decimal) const -> bool override;
@@ -87,7 +87,7 @@ public:
     auto PublicContract() const -> SerializedType override;
     auto Serialize() const -> OTData override;
     auto StringToAmountLocale(
-        std::int64_t& amount,
+        OTAmount& amount,
         const std::string& str_input,
         const std::string& str_thousand,
         const std::string& str_decimal) const -> bool override;

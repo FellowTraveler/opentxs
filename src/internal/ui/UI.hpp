@@ -866,7 +866,7 @@ struct ActivitySummaryItem final
 };
 struct ActivityThreadItem final : public Row,
                                   public internal::ActivityThreadItem {
-    auto Amount() const noexcept -> opentxs::Amount final { return 0; }
+    auto Amount() const noexcept -> OTAmount final { return 0; }
     auto Deposit() const noexcept -> bool final { return false; }
     auto DisplayAmount() const noexcept -> std::string final { return {}; }
     auto Loading() const noexcept -> bool final { return false; }
@@ -888,7 +888,7 @@ struct ActivityThreadItem final : public Row,
     }
 };
 struct BalanceItem final : public Row, public internal::BalanceItem {
-    auto Amount() const noexcept -> opentxs::Amount final { return {}; }
+    auto Amount() const noexcept -> OTAmount final { return {}; }
     auto Contacts() const noexcept -> std::vector<std::string> final
     {
         return {};

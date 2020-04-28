@@ -68,7 +68,7 @@ private:
 
     const OTUnitID unit_;
     const OTServerID server_;
-    const Amount amount_;
+    const std::uint64_t amount_;
 
     auto clone() const noexcept -> Outbailment* final
     {

@@ -66,7 +66,7 @@ Account::Account(
     , acctType_(err_acct)
     , acctInstrumentDefinitionID_(api_.Factory().UnitID())
     , balanceDate_(String::Factory())
-    , balanceAmount_(String::Factory())
+    , balanceAmount_(Factory::Amount())
     , stashTransNum_(0)
     , markForDeletion_(false)
     , inboxHash_(api_.Factory().Identifier())
@@ -84,7 +84,7 @@ Account::Account(const api::internal::Core& core)
     , acctType_(err_acct)
     , acctInstrumentDefinitionID_(api_.Factory().UnitID())
     , balanceDate_(String::Factory())
-    , balanceAmount_(String::Factory())
+    , balanceAmount_(Factory::Amount())
     , stashTransNum_(0)
     , markForDeletion_(false)
     , inboxHash_(api_.Factory().Identifier())
@@ -104,7 +104,7 @@ Account::Account(
     , acctType_(err_acct)
     , acctInstrumentDefinitionID_(api_.Factory().UnitID())
     , balanceDate_(String::Factory())
-    , balanceAmount_(String::Factory())
+    , balanceAmount_(Factory::Amount())
     , stashTransNum_(0)
     , markForDeletion_(false)
     , inboxHash_(api_.Factory().Identifier())
@@ -124,7 +124,7 @@ Account::Account(
     , acctType_(err_acct)
     , acctInstrumentDefinitionID_(api_.Factory().UnitID())
     , balanceDate_(String::Factory())
-    , balanceAmount_(String::Factory())
+    , balanceAmount_(Factory::Amount())
     , stashTransNum_(0)
     , markForDeletion_(false)
     , inboxHash_(api_.Factory().Identifier())
@@ -171,9 +171,10 @@ auto Account::ConsensusHash(
         LogOutput(OT_METHOD)(__FUNCTION__)(": Missing account id.").Flush();
     }
 
-    if (false == balanceAmount_->empty()) {
+    OTString balanceStr = String::Factory(balanceAmount_->str());
+    if (false == balanceStr->empty()) {
         preimage->Concatenate(
-            balanceAmount_->Get(), balanceAmount_->GetLength());
+            balanceStr->Get(), balanceStr->GetLength());
     } else {
         LogOutput(OT_METHOD)(__FUNCTION__)(": No account balance.").Flush();
     }
@@ -492,11 +493,11 @@ auto Account::SaveAccount() -> bool
 
 // Debit a certain amount from the account (presumably the same amount is being
 // credited somewhere else)
-auto Account::Debit(const Amount amount) -> bool
+auto Account::Debit(const Amount& amount) -> bool
 {
-    std::int64_t oldBalance = balanceAmount_->ToLong();
+    OTAmount oldBalance = Factory::Amount(balanceAmount_);
     // The MINUS here is the big difference between Debit and Credit
-    std::int64_t newBalance = oldBalance - amount;
+    OTAmount newBalance = oldBalance - amount;
 
     // fail if integer overflow
     if ((amount > 0 && oldBalance < INT64_MIN + amount) ||
@@ -515,7 +516,7 @@ auto Account::Debit(const Amount amount) -> bool
     // and it means that we now allow <0 debits on normal accounts,
     // AS LONG AS the result is a HIGHER BALANCE  :-)
     else {
-        balanceAmount_->Format("%" PRId64, newBalance);
+        balanceAmount_ = Factory::Amount(newBalance);
         balanceDate_->Set(String::Factory(getTimestamp()));
         return true;
     }
@@ -523,11 +524,11 @@ auto Account::Debit(const Amount amount) -> bool
 
 // Credit a certain amount to the account (presumably the same amount is being
 // debited somewhere else)
-auto Account::Credit(const Amount amount) -> bool
+auto Account::Credit(const Amount& amount) -> bool
 {
-    std::int64_t oldBalance = balanceAmount_->ToLong();
+    OTAmount oldBalance = Factory::Amount(balanceAmount_);
     // The PLUS here is the big difference between Debit and Credit.
-    std::int64_t newBalance = oldBalance + amount;
+    OTAmount newBalance = oldBalance + amount;
 
     // fail if integer overflow
     if ((amount > 0 && oldBalance > INT64_MAX - amount) ||
@@ -555,7 +556,7 @@ auto Account::Credit(const Amount amount) -> bool
     // and it means that we now allow <0 credits on normal accounts,
     // AS LONG AS the result is a HIGHER BALANCE  :-)
     else {
-        balanceAmount_->Format("%" PRId64, newBalance);
+        balanceAmount_ = Factory::Amount(newBalance);
         balanceDate_->Set(String::Factory(getTimestamp()));
         return true;
     }
@@ -764,7 +765,7 @@ auto Account::GenerateNewAccount(
     SetPurportedNotaryID(notaryID);
 
     balanceDate_->Set(String::Factory(getTimestamp()));
-    balanceAmount_->Set("0");
+    balanceAmount_->Assign(Factory::Amount(0));
 
     if (IsStashAcct()) {
         OT_ASSERT_MSG(
@@ -797,10 +798,9 @@ auto Account::GenerateNewAccount(
     return true;
 }
 
-auto Account::GetBalance() const -> std::int64_t
+auto Account::GetBalance() const -> const Amount&
 {
-    if (balanceAmount_->Exists()) { return balanceAmount_->ToLong(); }
-    return 0;
+    return balanceAmount_;
 }
 
 auto Account::DisplayStatistics(String& contents) const -> bool
@@ -824,7 +824,7 @@ auto Account::DisplayStatistics(String& contents) const -> bool
         "\n",
         acctType->Get(),
         m_strName->Get(),
-        balanceAmount_->Get(),
+        balanceAmount_->str(),
         balanceDate_->Get(),
         strAccountID->Get(),
         strNymID->Get(),
@@ -863,7 +863,7 @@ auto Account::SaveContractWallet(Tag& parent) const -> bool
     // and are not ever actually loaded back up. In the
     // previous version of this code, they were written
     // only as XML comments.
-    pTag->add_attribute("infoLastKnownBalance", balanceAmount_->Get());
+    pTag->add_attribute("infoLastKnownBalance", balanceAmount_->str());
     pTag->add_attribute("infoDateOfLastBalance", balanceDate_->Get());
     pTag->add_attribute("infoAccountType", acctType->Get());
     pTag->add_attribute(
@@ -928,7 +928,7 @@ void Account::UpdateContents(const PasswordPrompt& reason)
     TagPtr tagBalance(new Tag("balance"));
 
     tagBalance->add_attribute("date", balanceDate_->Get());
-    tagBalance->add_attribute("amount", balanceAmount_->Get());
+    tagBalance->add_attribute("amount", balanceAmount_->str());
 
     tag.add_tag(tagBalance);
 
@@ -1045,18 +1045,14 @@ auto Account::ProcessXMLNode(IrrXMLReader*& xml) -> std::int32_t
         retval = 1;
     } else if (strNodeName->Compare("balance")) {
         balanceDate_ = String::Factory(xml->getAttributeValue("date"));
-        balanceAmount_ = String::Factory(xml->getAttributeValue("amount"));
+        balanceAmount_ = Factory::Amount(xml->getAttributeValue("amount"));
 
         // I convert to integer / std::int64_t and back to string.
         // (Just an easy way to keep the data clean.)
-
         const auto date = parseTimestamp((balanceDate_->Get()));
-        const Amount amount = balanceAmount_->ToLong();
-
         balanceDate_->Set(String::Factory(formatTimestamp(date)));
-        balanceAmount_->Format("%" PRId64, amount);
 
-        LogDebug(OT_METHOD)(__FUNCTION__)("BALANCE  -- ")(balanceAmount_)
+        LogDebug(OT_METHOD)(__FUNCTION__)("BALANCE  -- ")(balanceAmount_->str())
             .Flush();
         LogDebug(OT_METHOD)(__FUNCTION__)("DATE     --")(balanceDate_).Flush();
 
@@ -1168,7 +1164,7 @@ auto Account::IsAllowedToGoNegative() const -> bool
 void Account::Release_Account()
 {
     balanceDate_->Release();
-    balanceAmount_->Release();
+    balanceAmount_->Assign(0);
     inboxHash_->Release();
     outboxHash_->Release();
 }

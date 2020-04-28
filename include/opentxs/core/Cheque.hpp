@@ -54,7 +54,7 @@ public:
         m_strContractType = String::Factory("VOUCHER");
     }
     inline const String& GetMemo() const { return m_strMemo; }
-    inline const std::int64_t& GetAmount() const { return m_lAmount; }
+    inline const Amount& GetAmount() const { return m_lAmount; }
     inline const identifier::Nym& GetRecipientNymID() const
     {
         return m_RECIPIENT_NYM_ID;
@@ -111,7 +111,7 @@ public:
     OPENTXS_EXPORT ~Cheque() override;
 
 protected:
-    Amount m_lAmount{0};
+    OTAmount m_lAmount;
     OTString m_strMemo;
     // Optional. If present, must match depositor's user ID.
     OTNymID m_RECIPIENT_NYM_ID;

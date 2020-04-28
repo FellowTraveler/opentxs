@@ -19,6 +19,8 @@
 #include "opentxs/core/Item.hpp"
 #include "opentxs/core/OTTransactionType.hpp"
 
+#include "internal/api/Api.hpp"
+
 namespace opentxs
 {
 namespace api
@@ -391,18 +393,18 @@ public:
 
     bool IsAbbreviated() const { return m_bIsAbbreviated; }
 
-    std::int64_t GetAbbrevAdjustment() const { return m_lAbbrevAmount; }
+    const Amount& GetAbbrevAdjustment() const { return m_lAbbrevAmount; }
 
-    void SetAbbrevAdjustment(std::int64_t lAmount)
+    void SetAbbrevAdjustment(const Amount& lAmount)
     {
-        m_lAbbrevAmount = lAmount;
+        m_lAbbrevAmount = api_.Factory().Amount(lAmount);
     }
 
-    std::int64_t GetAbbrevDisplayAmount() const { return m_lDisplayAmount; }
+    const Amount& GetAbbrevDisplayAmount() const { return m_lDisplayAmount; }
 
-    void SetAbbrevDisplayAmount(std::int64_t lAmount)
+    void SetAbbrevDisplayAmount(const Amount& lAmount)
     {
-        m_lDisplayAmount = lAmount;
+        m_lDisplayAmount = api_.Factory().Amount(lAmount);
     }
 
     std::int64_t GetAbbrevInRefDisplay() const { return m_lInRefDisplay; }
@@ -462,13 +464,10 @@ public:
         bool* pbHasSuccess = nullptr,
         bool* pbIsSuccess = nullptr);
 
-    OPENTXS_EXPORT std::int64_t GetReceiptAmount(
-        const PasswordPrompt& reason);  // Tries to
-                                        // determine
-                                        // IF there
-                                        // is an
-    // amount (depending on type) and return
-    // it.
+    OPENTXS_EXPORT const Amount& GetReceiptAmount(
+        const PasswordPrompt& reason);  // Tries to determine IF there is an
+                                        // amount (depending on type) and return
+                                        // it.
 
     transactionType GetType() const;
     void SetType(transactionType theType);
@@ -622,7 +621,7 @@ protected:
     // placed here, which makes it available for necessary calculations without
     // being forced to load up
     // all of the box receipts to do so.
-    std::int64_t m_lAbbrevAmount;
+    OTAmount m_lAbbrevAmount;
     // Just like m_lAbbrevAmount, except it stores the display amount. For
     // example, a transferReceipt for
     // a 5000 clam transfer has an effective value of 0 (since the transfer is
@@ -640,7 +639,7 @@ protected:
     // current process of loading
     // transaction items from a string every time we need to check the amount,
     // can be time-consuming, CPU-wise.)
-    std::int64_t m_lDisplayAmount;
+    OTAmount m_lDisplayAmount;
     // The value of GetReferenceNumForDisplay() is saved when saving an
     // abbreviated record of this transaction,
     // and then loaded into THIS member variable when loading the abbreviated

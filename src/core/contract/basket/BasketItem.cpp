@@ -7,6 +7,7 @@
 #include "1_Internal.hpp"  // IWYU pragma: associated
 #include "opentxs/core/contract/basket/BasketItem.hpp"  // IWYU pragma: associated
 
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Identifier.hpp"
 
 namespace opentxs
@@ -14,7 +15,7 @@ namespace opentxs
 BasketItem::BasketItem()
     : SUB_CONTRACT_ID(Identifier::Factory())
     , SUB_ACCOUNT_ID(Identifier::Factory())
-    , lMinimumTransferAmount(0)
+    , minimumTransferAmount(Amount::Factory())
     , lClosingTransactionNo(0)
 {
 }

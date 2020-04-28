@@ -70,7 +70,7 @@ public:
         const std::string& memo = "",
         const PaymentType type = PaymentType::Cheque) const noexcept = 0;
     OPENTXS_EXPORT virtual bool Pay(
-        const Amount amount,
+        const Amount& amount,
         const Identifier& sourceAccount,
         const std::string& memo = "",
         const PaymentType type = PaymentType::Cheque) const noexcept = 0;

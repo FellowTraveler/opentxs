@@ -42,7 +42,7 @@ class Token
 public:
     using Clock = std::chrono::system_clock;
     using Time = Clock::time_point;
-    using Denomination = std::uint64_t;
+    //using Denomination = OTAmount;
     using MintSeries = std::uint64_t;
 
     OPENTXS_EXPORT virtual std::string ID(
@@ -57,7 +57,7 @@ public:
     OPENTXS_EXPORT virtual const identifier::UnitDefinition& Unit() const = 0;
     OPENTXS_EXPORT virtual Time ValidFrom() const = 0;
     OPENTXS_EXPORT virtual Time ValidTo() const = 0;
-    OPENTXS_EXPORT virtual Denomination Value() const = 0;
+    OPENTXS_EXPORT virtual const Amount& Value() const = 0;
 
     OPENTXS_EXPORT virtual bool ChangeOwner(
         Purse& oldOwner,

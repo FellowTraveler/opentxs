@@ -25,6 +25,7 @@
 #include "opentxs/blind/Mint.hpp"
 #include "opentxs/blind/Purse.hpp"
 #include "opentxs/blind/Token.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Log.hpp"
 #include "opentxs/core/LogSource.hpp"
 #include "opentxs/core/PasswordPrompt.hpp"
@@ -53,7 +54,7 @@ auto Factory::Purse(
     const otx::context::Server& context,
     const proto::CashType type,
     const blind::Mint& mint,
-    const Amount totalValue,
+    const Amount& totalValue,
     const opentxs::PasswordPrompt& reason) -> blind::Purse*
 {
     return Purse(
@@ -74,7 +75,7 @@ auto Factory::Purse(
     const identity::Nym& serverNym,
     const proto::CashType type,
     const blind::Mint& mint,
-    const Amount totalValue,
+    const opentxs::Amount& totalValue,
     const opentxs::PasswordPrompt& reason) -> blind::Purse*
 {
     auto pEnvelope = std::make_unique<OTEnvelope>(api.Factory().Envelope());
@@ -184,7 +185,7 @@ Purse::Purse(
     const identifier::Server& notary,
     const identifier::UnitDefinition& unit,
     const proto::PurseType state,
-    const Amount totalValue,
+    const opentxs::Amount& totalValue,
     const Time validFrom,
     const Time validTo,
     const std::vector<OTToken>& tokens,
@@ -253,7 +254,7 @@ Purse::Purse(
           server,
           mint.InstrumentDefinitionID(),
           proto::PURSETYPE_REQUEST,
-          0,
+          api_.Factory().Amount(),
           Time::min(),
           Time::max(),
           {},
@@ -284,7 +285,7 @@ Purse::Purse(
           server,
           unit,
           proto::PURSETYPE_NORMAL,
-          0,
+          api.Factory().Amount(),
           Time::min(),
           Time::max(),
           {},
@@ -309,7 +310,7 @@ Purse::Purse(const api::internal::Core& api, const proto::Purse& in)
           identifier::Server::Factory(in.notary()),
           identifier::UnitDefinition::Factory(in.mint()),
           in.state(),
-          in.totalvalue(),
+          api_.Factory().Amount(in.totalvalue()),
           Clock::from_time_t(in.latestvalidfrom()),
           Clock::from_time_t(in.earliestvalidto()),
           {},
@@ -338,7 +339,7 @@ Purse::Purse(const api::internal::Core& api, const Purse& owner)
           owner.notary_,
           owner.unit_,
           proto::PURSETYPE_ISSUE,
-          0,
+          api_.Factory().Amount(),
           Time::min(),
           Time::max(),
           {},
@@ -473,13 +474,13 @@ auto Purse::generate_key(Secret& password) const -> OTSymmetricKey
 auto Purse::GeneratePrototokens(
     const identity::Nym& owner,
     const Mint& mint,
-    const Amount amount,
+    const opentxs::Amount& amount,
     const opentxs::PasswordPrompt& reason) -> bool
 {
-    Amount workingAmount(amount);
-    Amount tokenAmount{mint.GetLargestDenomination(workingAmount)};
+    OTAmount workingAmount(api_.Factory().Amount(amount));
+    OTAmount tokenAmount{api_.Factory().Amount(mint.GetLargestDenomination(workingAmount))};
 
-    while (tokenAmount > 0) {
+    while (tokenAmount > api_.Factory().Amount()) {
         try {
             workingAmount -= tokenAmount;
             std::shared_ptr<Token> pToken{
@@ -495,7 +496,7 @@ auto Purse::GeneratePrototokens(
 
             if (false == Push(pToken, reason)) { return false; }
 
-            tokenAmount = mint.GetLargestDenomination(workingAmount);
+            tokenAmount = api_.Factory().Amount(mint.GetLargestDenomination(workingAmount));
         } catch (const std::exception& e) {
             LogOutput(OT_METHOD)(__FUNCTION__)(":")(e.what()).Flush();
 
@@ -689,7 +690,7 @@ auto Purse::Serialize() const -> proto::Purse
     output.set_state(state_);
     output.set_notary(notary_->str());
     output.set_mint(unit_->str());
-    output.set_totalvalue(total_value_);
+    output.set_totalvalue(std::stoll(total_value_->str()));
     output.set_latestvalidfrom(Clock::to_time_t(latest_valid_from_));
     output.set_earliestvalidto(Clock::to_time_t(earliest_valid_to_));
 
@@ -795,7 +796,7 @@ auto Purse::Unlock(
 
 auto Purse::Verify(const api::server::internal::Manager& server) const -> bool
 {
-    Amount total{0};
+    OTAmount total{api_.Factory().Amount()};
     auto validFrom{Time::min()};
     auto validTo{Time::max()};
     std::set<proto::TokenState> allowedStates{};

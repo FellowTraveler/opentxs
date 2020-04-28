@@ -19,6 +19,7 @@
 #include "opentxs/api/Factory.hpp"
 #include "opentxs/api/Wallet.hpp"
 #include "opentxs/core/Account.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Armored.hpp"
 #include "opentxs/core/Identifier.hpp"
 #include "opentxs/core/Item.hpp"
@@ -51,11 +52,11 @@ OTPaymentPlan::OTPaymentPlan(const api::internal::Core& core)
     , m_tInitialPaymentDate()
     , m_tInitialPaymentCompletedDate()
     , m_tFailedInitialPaymentDate()
-    , m_lInitialPaymentAmount(0)
+    , m_lInitialPaymentAmount(api_.Factory().Amount())
     , m_bInitialPaymentDone(false)
     , m_nNumberInitialFailures(0)
     , m_bPaymentPlan(false)
-    , m_lPaymentPlanAmount(0)
+    , m_lPaymentPlanAmount(api_.Factory().Amount())
     , m_tTimeBetweenPayments(0)
     , m_tPaymentPlanStartDate()
     , m_tPaymentPlanLength(0)
@@ -79,11 +80,11 @@ OTPaymentPlan::OTPaymentPlan(
     , m_tInitialPaymentDate()
     , m_tInitialPaymentCompletedDate()
     , m_tFailedInitialPaymentDate()
-    , m_lInitialPaymentAmount(0)
+    , m_lInitialPaymentAmount(api_.Factory().Amount())
     , m_bInitialPaymentDone(false)
     , m_nNumberInitialFailures(0)
     , m_bPaymentPlan(false)
-    , m_lPaymentPlanAmount(0)
+    , m_lPaymentPlanAmount(api_.Factory().Amount())
     , m_tTimeBetweenPayments(0)
     , m_tPaymentPlanStartDate()
     , m_tPaymentPlanLength(0)
@@ -118,11 +119,11 @@ OTPaymentPlan::OTPaymentPlan(
     , m_tInitialPaymentDate()
     , m_tInitialPaymentCompletedDate()
     , m_tFailedInitialPaymentDate()
-    , m_lInitialPaymentAmount(0)
+    , m_lInitialPaymentAmount(api_.Factory().Amount())
     , m_bInitialPaymentDone(false)
     , m_nNumberInitialFailures(0)
     , m_bPaymentPlan(false)
-    , m_lPaymentPlanAmount(0)
+    , m_lPaymentPlanAmount(api_.Factory().Amount())
     , m_tTimeBetweenPayments(0)
     , m_tPaymentPlanStartDate()
     , m_tPaymentPlanLength(0)
@@ -169,14 +170,14 @@ auto OTPaymentPlan::ProcessXMLNode(irr::io::IrrXMLReader*& xml) -> std::int32_t
 
         SetNoInitialFailures(atoi(xml->getAttributeValue("numberOfAttempts")));
         SetInitialPaymentAmount(
-            String::StringToLong(xml->getAttributeValue("amount")));
+            api_.Factory().Amount(std::string(xml->getAttributeValue("amount"))));
 
         auto strCompleted =
             String::Factory(xml->getAttributeValue("completed"));
         m_bInitialPaymentDone = strCompleted->Compare("true");
 
         LogDetail(OT_METHOD)(__FUNCTION__)(": Initial Payment. Amount: ")(
-            m_lInitialPaymentAmount)(". Date: ")(GetInitialPaymentDate())(
+            m_lInitialPaymentAmount->str())(". Date: ")(GetInitialPaymentDate())(
             ". Completed Date: ")(GetInitialPaymentCompletedDate())(
             ". Number of failed attempts: ")(m_nNumberInitialFailures)(
             ". Date of last failed attempt: ")(
@@ -190,7 +191,9 @@ auto OTPaymentPlan::ProcessXMLNode(irr::io::IrrXMLReader*& xml) -> std::int32_t
         m_bPaymentPlan = true;
 
         SetPaymentPlanAmount(
-            String::StringToLong(xml->getAttributeValue("amountPerPayment")));
+            api_.Factory().Amount(
+                std::string(xml->getAttributeValue("amountPerPayment"))));
+
         SetMaximumNoPayments(atoi(xml->getAttributeValue("maxNoPayments")));
         SetNoPaymentsDone(atoi(xml->getAttributeValue("completedNoPayments")));
         SetNoFailedPayments(atoi(xml->getAttributeValue("failedNoPayments")));
@@ -219,7 +222,8 @@ auto OTPaymentPlan::ProcessXMLNode(irr::io::IrrXMLReader*& xml) -> std::int32_t
         SetDateOfLastFailedPayment(tLastAttempt);
 
         LogDetail(OT_METHOD)(__FUNCTION__)(
-            ": Payment Plan. Amount per payment: ")(m_lPaymentPlanAmount)(
+            ": Payment Plan. Amount per payment: ")
+            (m_lPaymentPlanAmount->str())(
             ". Seconds between payments: ")(tBetween.count())(
             ". Payment plan Start Date: ")(tStart)(". Length: ")(
             tLength.count())(". Maximum No. of Payments: ")(
@@ -307,7 +311,7 @@ void OTPaymentPlan::UpdateContents(const PasswordPrompt& reason)
         tagInitial->add_attribute(
             "date", formatTimestamp(GetInitialPaymentDate()));
         tagInitial->add_attribute(
-            "amount", std::to_string(GetInitialPaymentAmount()));
+            "amount", GetInitialPaymentAmount().str());
         tagInitial->add_attribute(
             "numberOfAttempts", std::to_string(GetNoInitialFailures()));
         tagInitial->add_attribute(
@@ -329,7 +333,7 @@ void OTPaymentPlan::UpdateContents(const PasswordPrompt& reason)
         TagPtr tagPlan(new Tag("paymentPlan"));
 
         tagPlan->add_attribute(
-            "amountPerPayment", std::to_string(GetPaymentPlanAmount()));
+            "amountPerPayment", GetPaymentPlanAmount().str());
         tagPlan->add_attribute(
             "timeBetweenPayments", std::to_string(lTimeBetween.count()));
         tagPlan->add_attribute(
@@ -372,7 +376,7 @@ void OTPaymentPlan::UpdateContents(const PasswordPrompt& reason)
 // *** Set Initial Payment ***  / Make sure to call SetAgreement() first.
 
 auto OTPaymentPlan::SetInitialPayment(
-    const Amount amount,
+    const Amount& amount,
     const std::chrono::seconds tTimeUntilInitialPayment) -> bool
 {
     m_bInitialPayment = true;       // There is now an initial payment.
@@ -529,14 +533,14 @@ auto OTPaymentPlan::VerifyAgreement(
 // *** Set Payment Plan *** / Make sure to call SetAgreement() first.
 // default: 1st payment in 30 days
 auto OTPaymentPlan::SetPaymentPlan(
-    const Amount lPaymentAmount,
+    const Amount& lPaymentAmount,
     const std::chrono::seconds tTimeUntilPlanStart,
     const std::chrono::seconds tBetweenPayments,
     const std::chrono::seconds tPlanLength,
     const std::int32_t nMaxPayments) -> bool
 {
 
-    if (lPaymentAmount <= 0) {
+    if (lPaymentAmount <= api_.Factory().Amount()) {
         LogOutput(OT_METHOD)(__FUNCTION__)(": Payment Amount less than zero.")
             .Flush();
         return false;
@@ -1074,9 +1078,9 @@ auto OTPaymentPlan::ProcessPayment(
                                                          // // (But just
                                                          // making sure...)
 
-                pItemSend->SetAmount(0);   // No money changed hands. Just being
+                pItemSend->SetAmount(api_.Factory().Amount);   // No money changed hands. Just being
                                            // explicit.
-                pItemRecip->SetAmount(0);  // No money changed hands. Just being
+                pItemRecip->SetAmount(api_.Factory().Amount);  // No money changed hands. Just being
                                            // explicit.
 
                 if (m_bProcessingInitialPayment) {
@@ -1612,7 +1616,7 @@ void OTPaymentPlan::InitPaymentPlan()
                                      // date.
     m_tInitialPaymentCompletedDate =
         Time{};  // Date the initial payment was finally completed.
-    m_lInitialPaymentAmount = 0;    // Amount of the initial payment.
+    m_lInitialPaymentAmount = api_.Factory().Amount;    // Amount of the initial payment.
     m_bInitialPaymentDone = false;  // Has the initial payment been made?
     m_nNumberInitialFailures = 0;  // Number of times we failed to process this.
     m_tFailedInitialPaymentDate =
@@ -1620,7 +1624,7 @@ void OTPaymentPlan::InitPaymentPlan()
 
     // Payment Plan...
     m_bPaymentPlan = false;    // Will there be a payment plan?
-    m_lPaymentPlanAmount = 0;  // Amount of each payment.
+    m_lPaymentPlanAmount = api_.Factory().Amount;  // Amount of each payment.
     m_tTimeBetweenPayments = std::chrono::hours{24 * 30};  // How std::int64_t
                                                            // between each
                                                            // payment? (Default:

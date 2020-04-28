@@ -45,7 +45,7 @@ class AccountListItem : virtual public ListRow
 {
 public:
     OPENTXS_EXPORT virtual std::string AccountID() const noexcept = 0;
-    OPENTXS_EXPORT virtual Amount Balance() const noexcept = 0;
+    OPENTXS_EXPORT virtual std::string Balance() const noexcept = 0;
     OPENTXS_EXPORT virtual std::string ContractID() const noexcept = 0;
     OPENTXS_EXPORT virtual std::string DisplayBalance() const noexcept = 0;
     OPENTXS_EXPORT virtual std::string DisplayUnit() const noexcept = 0;

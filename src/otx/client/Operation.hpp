@@ -132,7 +132,7 @@ public:
     auto SendTransfer(
         const Identifier& sourceAccountID,
         const Identifier& destinationAccountID,
-        const Amount amount,
+        const Amount& amount,
         const String& memo) -> bool override;
     void SetPush(const bool on) override { enable_otx_push_.store(on); }
     void Shutdown() override;
@@ -148,7 +148,7 @@ public:
         const otx::context::Server::ExtraArgs& args) -> bool override;
     auto UpdateAccount(const Identifier& accountID) -> bool override;
 #if OT_CASH
-    auto WithdrawCash(const Identifier& accountID, const Amount amount)
+    auto WithdrawCash(const Identifier& accountID, const Amount& amount)
         -> bool override;
 #endif
 
@@ -206,7 +206,7 @@ private:
     std::shared_ptr<const proto::UnitDefinition> unit_definition_;
     OTIdentifier account_id_;
     OTIdentifier generic_id_;
-    Amount amount_;
+    OTAmount amount_;
     OTString memo_;
     bool bool_;
     proto::ContactSectionName claim_section_;

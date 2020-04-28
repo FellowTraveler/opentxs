@@ -43,7 +43,7 @@ auto Factory::BasketContract(
     const std::string& name,
     const std::string& symbol,
     const std::string& terms,
-    const std::uint64_t weight,
+    const opentxs::Amount& weight,
     const proto::ContactItemType unitOfAccount,
     const VersionNumber version) noexcept
     -> std::shared_ptr<contract::unit::Basket>

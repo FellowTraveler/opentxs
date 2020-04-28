@@ -56,7 +56,7 @@
 #include "opentxs/protobuf/verify/RPCPush.hpp"
 #include "opentxs/util/WorkType.hpp"
 
-#define RPC_ACCOUNT_EVENT_VERSION 1
+#define RPC_ACCOUNT_EVENT_VERSION 2
 #define RPC_PUSH_VERSION 1
 
 #define OT_METHOD "opentxs::api::client::implementation::Workflow::"
@@ -1234,14 +1234,13 @@ auto Workflow::ClearCheque(
     }
 
     update_rpc(
-
         nymID,
         cheque->GetRecipientNymID().str(),
         cheque->SourceAccountID().str(),
         proto::ACCOUNTEVENT_OUTGOINGCHEQUE,
         workflow->id(),
-        -1 * cheque->GetAmount(),
-        0,
+        cheque->GetAmount() * api_.Factory().Amount(-1),
+        api_.Factory().Amount(),
         time,
         cheque->GetMemo().Get());
 
@@ -1337,14 +1336,13 @@ auto Workflow::ClearTransfer(
             StorageBox::OUTGOINGTRANSFER,
             time);
         update_rpc(
-
             nymID.str(),
             depositorNymID->str(),
             accountID.str(),
             proto::ACCOUNTEVENT_OUTGOINGTRANSFER,
             workflow->id(),
             transfer->GetAmount(),
-            0,
+            api_.Factory().Amount(),
             time,
             note->Get());
     }
@@ -1481,14 +1479,13 @@ auto Workflow::convey_incoming_transfer(
             StorageBox::INCOMINGTRANSFER,
             time);
         update_rpc(
-
             recipientNymID,
             senderNymID,
             accountID.str(),
             proto::ACCOUNTEVENT_INCOMINGTRANSFER,
             workflowID->str(),
             transfer.GetAmount(),
-            0,
+            api_.Factory().Amount(),
             time,
             note->Get());
     }
@@ -1818,14 +1815,13 @@ auto Workflow::CreateTransfer(const Item& transfer, const Message& request)
         auto note = String::Factory();
         transfer.GetNote(note);
         update_rpc(
-
             senderNymID.Get(),
             "",
             accountID.str(),
             proto::ACCOUNTEVENT_OUTGOINGTRANSFER,
             workflowID->str(),
             transfer.GetAmount(),
-            0,
+            api_.Factory().Amount(),
             time,
             note->Get());
     }
@@ -1873,14 +1869,13 @@ auto Workflow::DepositCheque(
 
     if (output && cheque_deposit_success(reply)) {
         update_rpc(
-
             receiver.str(),
             cheque.GetSenderNymID().str(),
             accountID.str(),
             proto::ACCOUNTEVENT_INCOMINGCHEQUE,
             workflow->id(),
             cheque.GetAmount(),
-            0,
+            api_.Factory().Amount(),
             Clock::from_time_t(reply->m_lTime),
             cheque.GetMemo().Get());
     }
@@ -2294,13 +2289,12 @@ auto Workflow::ImportCheque(
             StorageBox::INCOMINGCHEQUE,
             time);
         update_rpc(
-
             nymID.str(),
             cheque.GetSenderNymID().str(),
             "",
             proto::ACCOUNTEVENT_INCOMINGCHEQUE,
             workflowID->str(),
-            0,
+            api_.Factory().Amount(),
             cheque.GetAmount(),
             time,
             cheque.GetMemo().Get());
@@ -2318,7 +2312,7 @@ auto Workflow::isCheque(const opentxs::Cheque& cheque) -> bool
         return false;
     }
 
-    if (0 > cheque.GetAmount()) {
+    if (cheque.GetAmount() <= Amount::Factory(0)) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
             ": Provided instrument is an invoice")
             .Flush();
@@ -2326,7 +2320,7 @@ auto Workflow::isCheque(const opentxs::Cheque& cheque) -> bool
         return false;
     }
 
-    if (0 == cheque.GetAmount()) {
+    if (cheque.GetAmount() == Amount::Factory(0)) {
         LogOutput(OT_METHOD)(__FUNCTION__)(
             ": Provided instrument is a cancellation")
             .Flush();
@@ -2572,13 +2566,12 @@ auto Workflow::ReceiveCheque(
             StorageBox::INCOMINGCHEQUE,
             time);
         update_rpc(
-
             nymID.str(),
             cheque.GetSenderNymID().str(),
             "",
             proto::ACCOUNTEVENT_INCOMINGCHEQUE,
             workflowID->str(),
-            0,
+            api_.Factory().Amount(),
             cheque.GetAmount(),
             time,
             cheque.GetMemo().Get());
@@ -2775,8 +2768,8 @@ void Workflow::update_rpc(
     const std::string& accountID,
     const proto::AccountEventType type,
     const std::string& workflowID,
-    const Amount amount,
-    const Amount pending,
+    const Amount& amount,
+    const Amount& pending,
     const Time time,
     const std::string& memo) const
 {
@@ -2796,8 +2789,10 @@ void Workflow::update_rpc(
     }
 
     event.set_workflow(workflowID);
-    event.set_amount(amount);
-    event.set_pendingamount(pending);
+//    event.set_amount(amount);
+//    event.set_pendingamount(pending);
+    event.set_amount_mp(amount.str());
+    event.set_pendingamount_mp(pending.str());
     event.set_timestamp(Clock::to_time_t(time));
     event.set_memo(memo);
 
@@ -2904,14 +2899,13 @@ auto Workflow::WriteCheque(const opentxs::Cheque& cheque) const -> OTIdentifier
 
     if (false == workflowID->empty()) {
         update_rpc(
-
             nymID,
             cheque.GetRecipientNymID().str(),
             cheque.SourceAccountID().str(),
             proto::ACCOUNTEVENT_OUTGOINGCHEQUE,
             workflowID->str(),
-            0,
-            -1 * cheque.GetAmount(),
+            api_.Factory().Amount(),
+            cheque.GetAmount() * api_.Factory().Amount(-1),
             time,
             cheque.GetMemo().Get());
     }

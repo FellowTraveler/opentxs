@@ -73,7 +73,7 @@ struct Unit final : virtual public opentxs::contract::Unit, public Signable {
         return {};
     }
     auto FormatAmountLocale(
-        Amount,
+        const Amount&,
         std::string&,
         const std::string&,
         const std::string&) const -> bool final
@@ -81,7 +81,7 @@ struct Unit final : virtual public opentxs::contract::Unit, public Signable {
         return {};
     }
     auto FormatAmountWithoutSymbolLocale(
-        Amount amount,
+        const Amount&,
         std::string&,
         const std::string&,
         const std::string&) const -> bool final
@@ -96,7 +96,7 @@ struct Unit final : virtual public opentxs::contract::Unit, public Signable {
     }
     auto PublicContract() const -> SerializedType final { return {}; }
     auto StringToAmountLocale(
-        Amount&,
+        OTAmount&,
         const std::string&,
         const std::string&,
         const std::string&) const -> bool final

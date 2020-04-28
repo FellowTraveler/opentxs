@@ -88,6 +88,7 @@
 #include "opentxs/crypto/Bip32Child.hpp"
 #include "opentxs/crypto/Bip43Purpose.hpp"
 #include "opentxs/crypto/key/EllipticCurve.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/crypto/key/HD.hpp"
 #include "opentxs/crypto/key/Secp256k1.hpp"
 #include "opentxs/crypto/key/Symmetric.hpp"
@@ -123,6 +124,41 @@ Factory::Factory(const api::internal::Core& api)
 {
     OT_ASSERT(pAsymmetric_);
     OT_ASSERT(pSymmetric_);
+}
+
+auto Factory::Amount() const -> OTAmount
+{
+    return OTAmount{opentxs::Factory::Amount()};
+}
+
+auto Factory::Amount(const opentxs::Amount& input) const -> OTAmount
+{
+    return OTAmount{opentxs::Factory::Amount(input)};
+}
+
+auto Factory::Amount(const std::int8_t input) const -> OTAmount
+{
+    return OTAmount{opentxs::Factory::Amount(input)};
+}
+
+auto Factory::Amount(const std::int16_t input) const -> OTAmount
+{
+    return OTAmount{opentxs::Factory::Amount(input)};
+}
+
+auto Factory::Amount(const std::int32_t input) const -> OTAmount
+{
+    return OTAmount{opentxs::Factory::Amount(input)};
+}
+
+auto Factory::Amount(const std::int64_t input) const -> OTAmount
+{
+    return OTAmount{opentxs::Factory::Amount(input)};
+}
+
+auto Factory::Amount(const std::string input) const -> OTAmount
+{
+    return OTAmount{opentxs::Factory::Amount(input)};
 }
 
 auto Factory::Armored() const -> OTArmored
@@ -199,7 +235,7 @@ auto Factory::BailmentNotice(
     const identifier::Server& serverID,
     const opentxs::Identifier& requestID,
     const std::string& txid,
-    const Amount& amount,
+    const opentxs::Amount& amount,
     const opentxs::PasswordPrompt& reason) const noexcept(false)
     -> OTBailmentNotice
 {
@@ -308,11 +344,13 @@ auto Factory::Basket() const -> std::unique_ptr<opentxs::Basket>
     return basket;
 }
 
-auto Factory::Basket(std::int32_t nCount, std::int64_t lMinimumTransferAmount)
+auto Factory::Basket(
+    std::int32_t nCount,
+    const opentxs::Amount& lMinimumTransferAmount)
     const -> std::unique_ptr<opentxs::Basket>
 {
     std::unique_ptr<opentxs::Basket> basket;
-    basket.reset(new opentxs::Basket(api_, nCount, lMinimumTransferAmount));
+    basket.reset(new opentxs::Basket(api_, nCount, minimumTransferAmount));
 
     return basket;
 }
@@ -323,7 +361,7 @@ auto Factory::BasketContract(
     const std::string& name,
     const std::string& symbol,
     const std::string& terms,
-    const std::uint64_t weight,
+    const opentxs::Amount& weight,
     const proto::ContactItemType unitOfAccount,
     const VersionNumber version) const noexcept(false) -> OTBasketContract
 {
@@ -1543,7 +1581,7 @@ auto Factory::OutbailmentRequest(
     const identifier::Nym& recipient,
     const identifier::UnitDefinition& unit,
     const identifier::Server& server,
-    const std::uint64_t& amount,
+    const opentxs::Amount& amount,
     const std::string& terms,
     const opentxs::PasswordPrompt& reason) const noexcept(false)
     -> OTOutbailmentRequest
@@ -1922,7 +1960,7 @@ auto Factory::Purse(
     const otx::context::Server& context,
     const identifier::UnitDefinition& unit,
     const blind::Mint& mint,
-    const Amount totalValue,
+    const opentxs::Amount& totalValue,
     const opentxs::PasswordPrompt& reason,
     const proto::CashType type) const -> std::unique_ptr<blind::Purse>
 {

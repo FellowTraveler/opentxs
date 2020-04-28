@@ -82,6 +82,7 @@ public:
     auto Value() const -> Denomination override { return denomination_; }
 
     virtual auto GenerateTokenRequest(
+
         const identity::Nym& owner,
         const Mint& mint,
         const PasswordPrompt& reason) -> bool = 0;
@@ -97,7 +98,7 @@ protected:
     const OTServerID notary_;
     const OTUnitID unit_;
     const std::uint64_t series_;
-    const Denomination denomination_;
+    const OTAmount denomination_;
     const Time valid_from_;
     const Time valid_to_;
 
@@ -120,7 +121,7 @@ protected:
         const VersionNumber version,
         const proto::TokenState state,
         const std::uint64_t series,
-        const Denomination denomination,
+        const Amount& denomination,
         const Time validFrom,
         const Time validTo);
     Token(const Token&);
@@ -141,7 +142,7 @@ private:
         const identifier::Server& notary,
         const identifier::UnitDefinition& unit,
         const std::uint64_t series,
-        const Denomination denomination,
+        const Amount& denomination,
         const Time validFrom,
         const Time validTo,
         const VersionNumber version);

@@ -51,6 +51,7 @@ class AccountActivity : virtual public List
 public:
     OPENTXS_EXPORT virtual std::string AccountID() const noexcept = 0;
     OPENTXS_EXPORT virtual Amount Balance() const noexcept = 0;
+    //OPENTXS_EXPORT virtual std::string Balance() const noexcept = 0;
     OPENTXS_EXPORT virtual int BalancePolarity() const noexcept = 0;
     OPENTXS_EXPORT virtual std::string ContractID() const noexcept = 0;
 #if OT_BLOCKCHAIN

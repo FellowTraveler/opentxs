@@ -8,6 +8,8 @@
 
 #include "opentxs/Forward.hpp"  // IWYU pragma: associated
 
+#include "opentxs/core/Amount.hpp"
+
 #include <deque>
 
 #include "opentxs/Types.hpp"
@@ -24,7 +26,7 @@ class BasketItem
 public:
     OTIdentifier SUB_CONTRACT_ID;
     OTIdentifier SUB_ACCOUNT_ID;
-    TransactionNumber lMinimumTransferAmount{0};
+    OTAmount minimumTransferAmount;
     // lClosingTransactionNo:
     // Used when EXCHANGING a basket (NOT USED when first creating one.)
     // A basketReceipt must be dropped into each asset account during

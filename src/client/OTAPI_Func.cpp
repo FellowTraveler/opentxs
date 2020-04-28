@@ -15,6 +15,7 @@
 #include "opentxs/Pimpl.hpp"
 #include "opentxs/api/Wallet.hpp"
 #include "opentxs/client/OTAPI_Exec.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Cheque.hpp"
 #include "opentxs/core/Identifier.hpp"
 #include "opentxs/core/Ledger.hpp"
@@ -131,13 +132,14 @@ OTAPI_Func::OTAPI_Func(
     , context_(context_editor_.get())
     , last_attempt_()
     , is_transaction_(type_type_.at(type))
-    , activationPrice_(0)
-    , adjustment_(0)
-    , amount_(0)
-    , depth_(0)
-    , increment_(0)
-    , quantity_(0)
-    , price_(0)
+    , activationPrice_(opentxs::Factory::Amount())
+    , adjustment_(opentxs::Factory::Amount())
+    , amount_(opentxs::Factory::Amount())
+    , depth_(opentxs::Factory::Amount())
+    , increment_(opentxs::Factory::Amount())
+    , quantity_(opentxs::Factory::Amount())
+    , price_(opentxs::Factory::Amount())
+    , scale_(opentxs::Factory::Amount())
     , infoType_(proto::CONNECTIONINFO_ERROR)
     , unitDefinition_()
 {
@@ -256,11 +258,11 @@ OTAPI_Func::OTAPI_Func(
     switch (theType) {
         case ADJUST_USAGE_CREDITS: {
             targetID_ = nymID2;      // target nym ID
-            adjustment_ = int64val;  // adjustment (up or down.)
+            adjustment_ = api().Factory().Amount(int64val);  // adjustment (up or down.)
         } break;
         case GET_MARKET_OFFERS: {
             marketID_ = nymID2;
-            depth_ = int64val;
+            depth_ = api().Factory().Amount(int64val);
         } break;
         case KILL_PAYMENT_PLAN:
         case KILL_MARKET_OFFER: {
@@ -446,10 +448,10 @@ OTAPI_Func::OTAPI_Func(
             nTransNumsNeeded_ = 3;
             accountID_ = assetAccountID;
             currencyAccountID_ = currencyAccountID;
-            scale_ = scale;
-            increment_ = increment;
-            quantity_ = quantity;
-            price_ = price;
+            scale_ = api().Factory().Amount(scale);
+            increment_ = api().Factory().Amount(increment);
+            quantity_ = api().Factory().Amount(quantity);
+            price_ = api().Factory().Amount(price);
             selling_ = selling;
             lifetime_ = lifetime;
             activationPrice_ = activationPrice;
@@ -566,7 +568,7 @@ void OTAPI_Func::run()
                 const std::int64_t MARKET_SCALE = scale_;
                 const std::int64_t MINIMUM_INCREMENT = increment_;
                 const std::int64_t TOTAL_ASSETS_ON_OFFER = quantity_;
-                const Amount PRICE_LIMIT = price_;
+                const Amount& PRICE_LIMIT = price_;
                 const auto& bBuyingOrSelling = selling_;
                 const auto& tLifespanInSeconds = lifetime_;
                 const auto& STOP_SIGN = stopSign_;

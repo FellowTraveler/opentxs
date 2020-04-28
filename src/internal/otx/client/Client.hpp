@@ -16,9 +16,11 @@
 #include "opentxs/core/contract/peer/PeerRequest.hpp"
 #include "opentxs/otx/consensus/Server.hpp"
 #include "util/Blank.hpp"
+#include "opentxs/core/Amount.hpp"
 
 namespace opentxs
 {
+
 struct OT_DownloadNymboxType {
 };
 struct OT_GetTransactionNumbersType {
@@ -84,19 +86,28 @@ using RegisterNymTask = bool;
  * validTo
  */
 using SendChequeTask =
-    std::tuple<OTIdentifier, OTNymID, Amount, std::string, Time, Time>;
-/** SendTransferTask: source account, destination account, amount, memo
+    std::tuple<OTIdentifier, OTNymID, OTAmount, std::string, Time, Time>;
+/** SendTransferTask: source account, destination nym, amount, memo
  */
 using SendTransferTask =
-    std::tuple<OTIdentifier, OTIdentifier, Amount, std::string>;
+    std::tuple<OTIdentifier, OTIdentifier, OTAmount, std::string>;
 #if OT_CASH
 /** WithdrawCashTask: Account ID, amount*/
-using WithdrawCashTask = std::pair<OTIdentifier, Amount>;
+using WithdrawCashTask = std::pair<OTIdentifier, OTAmount>;
 #endif  // OT_CASH
 }  // namespace opentxs::otx::client
 
 namespace opentxs
 {
+template <>
+struct make_blank<OTAmount> {
+    static OTAmount value(const api::Core& api)
+    {
+        return Amount::Factory();
+//      return {api.Factory().Amount()};
+    }
+};
+
 template <>
 struct make_blank<otx::client::DepositPaymentTask> {
     static auto value(const api::Core& api) -> otx::client::DepositPaymentTask
@@ -210,7 +221,8 @@ template <>
 struct make_blank<otx::client::WithdrawCashTask> {
     static auto value(const api::Core& api) -> otx::client::WithdrawCashTask
     {
-        return {make_blank<OTIdentifier>::value(api), 0};
+        return {make_blank<OTIdentifier>::value(api),
+                make_blank<OTAmount>::value(api)};
     }
 };
 #endif  // OT_CASH
@@ -299,7 +311,7 @@ struct Operation {
     virtual auto SendTransfer(
         const Identifier& sourceAccountID,
         const Identifier& destinationAccountID,
-        const Amount amount,
+        const Amount& amount,
         const String& memo) -> bool = 0;
     virtual void SetPush(const bool enabled) = 0;
     virtual void Shutdown() = 0;
@@ -316,7 +328,7 @@ struct Operation {
         const otx::context::Server::ExtraArgs& args = {}) -> bool = 0;
     virtual auto UpdateAccount(const Identifier& accountID) -> bool = 0;
 #if OT_CASH
-    virtual auto WithdrawCash(const Identifier& accountID, const Amount amount)
+    virtual auto WithdrawCash(const Identifier& accountID, const Amount& amount)
         -> bool = 0;
 #endif
 

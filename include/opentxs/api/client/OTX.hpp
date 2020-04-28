@@ -159,7 +159,7 @@ public:
         const identifier::Server& serverID,
         const identifier::Nym& targetNymID,
         const identifier::UnitDefinition& instrumentDefinitionID,
-        const Amount amount,
+        const Amount& amount,
         const std::string& message,
         const SetID setID = {}) const = 0;
     OPENTXS_EXPORT virtual BackgroundTask InitiateRequestConnection(
@@ -198,7 +198,7 @@ public:
         const identifier::UnitDefinition& instrumentDefinitionID,
         const Identifier& requestID,
         const std::string& txid,
-        const Amount amount,
+        const Amount& amount,
         const SetID setID = {}) const = 0;
     OPENTXS_EXPORT virtual BackgroundTask PayContact(
         const identifier::Nym& senderNymID,
@@ -241,7 +241,7 @@ public:
         const identifier::Nym& localNymID,
         const Identifier& sourceAccountID,
         const Identifier& recipientContactID,
-        const Amount value,
+        const Amount& value,
         const std::string& memo,
         const Time validFrom = Clock::now(),
         const Time validTo =
@@ -251,14 +251,14 @@ public:
         const identifier::Server& serverID,
         const Identifier& sourceAccountID,
         const Identifier& targetAccountID,
-        const Amount value,
+        const Amount& value,
         const std::string& memo) const = 0;
     OPENTXS_EXPORT virtual BackgroundTask SendTransfer(
         const identifier::Nym& localNymID,
         const identifier::Server& serverID,
         const Identifier& sourceAccountID,
         const Identifier& targetAccountID,
-        const Amount value,
+        const Amount& value,
         const std::string& memo) const = 0;
     OPENTXS_EXPORT virtual void StartIntroductionServer(
         const identifier::Nym& localNymID) const = 0;
@@ -268,7 +268,7 @@ public:
         const identifier::Nym& nymID,
         const identifier::Server& serverID,
         const Identifier& account,
-        const Amount value) const = 0;
+        const Amount& value) const = 0;
 #endif
 
     OPENTXS_EXPORT virtual ~OTX() = default;

@@ -8,6 +8,8 @@
 
 #include "opentxs/Forward.hpp"  // IWYU pragma: associated
 
+#include "opentxs/core/Amount.hpp"
+
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -167,9 +169,9 @@ public:
         const String& PLAN_CONSIDERATION,  // like a memo.
         const Identifier& RECIPIENT_ACCT_ID,
         const identifier::Nym& RECIPIENT_NYM_ID,
-        const std::int64_t& INITIAL_PAYMENT_AMOUNT,
+        const Amount& INITIAL_PAYMENT_AMOUNT,
         const std::chrono::seconds INITIAL_PAYMENT_DELAY,
-        const std::int64_t& PAYMENT_PLAN_AMOUNT,
+        const Amount& PAYMENT_PLAN_AMOUNT,
         const std::chrono::seconds PAYMENT_PLAN_DELAY,
         const std::chrono::seconds PAYMENT_PLAN_PERIOD,
         const std::chrono::seconds PAYMENT_PLAN_LENGTH = {},
@@ -290,7 +292,7 @@ public:
         const Identifier& ACCT_ID,
         const identifier::Nym& RECIPIENT_NYM_ID,
         const String& CHEQUE_MEMO,
-        const Amount amount) const;
+        const std::int64_t& amount) const;
 
 #if OT_WITH_DIVIDENDS
     OPENTXS_EXPORT CommandResult payDividend(
@@ -604,11 +606,11 @@ public:
                                                     // sale
         // or purchase. Will be multiplied
         // by minimum increment.
-        const Amount PRICE_LIMIT,     // Per Minimum Increment...
+        const std::int64_t& PRICE_LIMIT,     // Per Minimum Increment...
         const bool bBuyingOrSelling,  // BUYING == false, SELLING == true.
         const std::chrono::seconds tLifespanInSeconds = std::chrono::hours{24},
         const char STOP_SIGN = 0,  // For stop orders, set to '<' or '>'
-        const Amount ACTIVATION_PRICE = 0) const;  // For stop orders, set the
+        std::int64_t ACTIVATION_PRICE = 0) const;  // For stop orders, set the
                                                    // threshold price here.
     OPENTXS_EXPORT CommandResult
     getMarketList(otx::context::Server& context) const;
@@ -664,7 +666,7 @@ private:
         const TransactionNumber referenceNumber,
         const String& note,
         const identity::Nym& nym,
-        const Amount amount,
+        const std::int64_t& amount,
         const String& inRefTo,
         OTTransaction& processInbox) const;
     bool find_cron(
@@ -673,7 +675,7 @@ private:
         OTTransaction& processInbox,
         OTTransaction& serverTransaction,
         Ledger& inbox,
-        Amount& amount,
+        std::int64_t& amount,
         std::set<TransactionNumber>& closing) const;
     bool find_standard(
         const otx::context::Server& context,
@@ -681,7 +683,7 @@ private:
         const TransactionNumber number,
         OTTransaction& serverTransaction,
         Ledger& inbox,
-        Amount& amount,
+        std::int64_t& amount,
         std::set<TransactionNumber>& closing) const;
     OTTransaction* get_or_create_process_inbox(
         const Identifier& accountID,

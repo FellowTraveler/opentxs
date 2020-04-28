@@ -63,7 +63,7 @@ public:
         const identifier::Nym& localNymID,
         const identifier::Server& serverID,
         const identifier::Nym& targetNymID,
-        const Amount adjustment) const -> Action final;
+        const Amount& adjustment) const -> Action final;
     auto CancelPaymentPlan(
         const PasswordPrompt& reason,
         const identifier::Nym& localNymID,
@@ -73,14 +73,14 @@ public:
         const PasswordPrompt& reason,
         const Identifier& assetAccountID,
         const Identifier& currencyAccountID,
-        const Amount scale,
-        const Amount increment,
-        const Amount quantity,
-        const Amount price,
+        const Amount& scale,
+        const Amount& increment,
+        const Amount& quantity,
+        const Amount& price,
         const bool selling,
         const std::chrono::seconds lifetime,
         const std::string& stopSign,
-        const Amount activationPrice) const -> Action final;
+        const Amount& activationPrice) const -> Action final;
     auto DepositPaymentPlan(
         const PasswordPrompt& reason,
         const identifier::Nym& localNymID,
@@ -95,7 +95,7 @@ public:
         const identifier::Nym& localNymID,
         const identifier::Server& serverID,
         const Identifier& marketID,
-        const Amount depth) const -> Action final;
+        const Amount& depth) const -> Action final;
     auto DownloadMarketRecentTrades(
         const PasswordPrompt& reason,
         const identifier::Nym& localNymID,
@@ -138,7 +138,7 @@ public:
         const identifier::UnitDefinition& instrumentDefinitionID,
         const Identifier& accountID,
         const std::string& memo,
-        const Amount amountPerShare) const -> Action final;
+        const Amount& amountPerShare) const -> Action final;
     auto TriggerClause(
         const PasswordPrompt& reason,
         const identifier::Nym& localNymID,
@@ -161,7 +161,7 @@ public:
         const identifier::Server& serverID,
         const Identifier& accountID,
         const identifier::Nym& recipientNymID,
-        const Amount amount,
+        const Amount& amount,
         const std::string& memo) const -> Action final;
 
     ServerAction(

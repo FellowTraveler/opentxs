@@ -38,7 +38,7 @@ namespace opentxs
 {
 Cheque::Cheque(const api::internal::Core& core)
     : ot_super(core)
-    , m_lAmount(0)
+    , m_lAmount(Factory::Amount())
     , m_strMemo(String::Factory())
     , m_RECIPIENT_NYM_ID(api_.Factory().NymID())
     , m_bHasRecipient(false)
@@ -54,7 +54,7 @@ Cheque::Cheque(
     const identifier::Server& NOTARY_ID,
     const identifier::UnitDefinition& INSTRUMENT_DEFINITION_ID)
     : ot_super(core, NOTARY_ID, INSTRUMENT_DEFINITION_ID)
-    , m_lAmount(0)
+    , m_lAmount(Factory::Amount())
     , m_strMemo(String::Factory())
     , m_RECIPIENT_NYM_ID(api_.Factory().NymID())
     , m_bHasRecipient(false)
@@ -118,7 +118,7 @@ void Cheque::UpdateContents([[maybe_unused]] const PasswordPrompt& reason)
 // return -1 if error, 0 if nothing, and 1 if the node was processed.
 auto Cheque::ProcessXMLNode(IrrXMLReader*& xml) -> std::int32_t
 {
-    std::int32_t nReturnVal = 0;
+    std::int32_t nReturnVal{0};
 
     // Here we call the parent class first.
     // If the node is found there, or there is some error,

@@ -16,6 +16,7 @@
 #include "internal/api/Api.hpp"
 #include "opentxs/Pimpl.hpp"
 #include "opentxs/api/Factory.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Armored.hpp"
 #include "opentxs/core/Cheque.hpp"
 #include "opentxs/core/Contract.hpp"
@@ -77,7 +78,7 @@ OTPayment::OTPayment(const api::internal::Core& core)
     , m_bAreTempValuesSet(false)
     , m_bHasRecipient(false)
     , m_bHasRemitter(false)
-    , m_lAmount(0)
+    , amount_(Factory::Amount())
     , m_lTransactionNum(0)
     , m_lTransNumDisplay(0)
     , m_strMemo(String::Factory())
@@ -102,7 +103,7 @@ OTPayment::OTPayment(const api::internal::Core& core, const String& strPayment)
     , m_bAreTempValuesSet(false)
     , m_bHasRecipient(false)
     , m_bHasRemitter(false)
-    , m_lAmount(0)
+    , amount_(Factory::Amount())
     , m_lTransactionNum(0)
     , m_lTransNumDisplay(0)
     , m_strMemo(String::Factory())
@@ -264,7 +265,7 @@ auto OTPayment::SetTempValuesFromCheque(const Cheque& theInput) -> bool
 
             m_bAreTempValuesSet = true;
 
-            m_lAmount = theInput.GetAmount();
+            amount_->Assign(theInput.GetAmount());
             m_lTransactionNum = theInput.GetTransactionNum();
             m_lTransNumDisplay = m_lTransactionNum;
 
@@ -415,7 +416,7 @@ void OTPayment::lowLevelSetTempValuesFromPaymentPlan(
 
     // There're also regular payments of GetPaymentPlanAmount().
     // Can't fit 'em all.
-    m_lAmount = theInput.GetInitialPaymentAmount();
+    amount_->Assign(theInput.GetInitialPaymentAmount());
     m_lTransactionNum = theInput.GetTransactionNum();
     m_lTransNumDisplay = theInput.GetRecipientOpeningNum();
 
@@ -463,7 +464,7 @@ void OTPayment::lowLevelSetTempValuesFromSmartContract(
     m_bHasRecipient = false;
     m_bHasRemitter = false;
 
-    m_lAmount = 0;  // not used here.
+    amount_->Assign(static_cast<std::int64_t>(0));  // not used here.
     m_lTransactionNum = theInput.GetTransactionNum();
     //  m_lTransNumDisplay = theInput.GetTransactionNum();
 
@@ -584,9 +585,9 @@ auto OTPayment::GetMemo(String& strOutput) const -> bool
     return bSuccess;
 }
 
-auto OTPayment::GetAmount(std::int64_t& lOutput) const -> bool
+auto OTPayment::GetAmount(OTAmount& output) const -> bool
 {
-    lOutput = 0;
+    output->Assign(static_cast<std::int64_t>(0));
 
     if (!m_bAreTempValuesSet) return false;
 
@@ -597,13 +598,13 @@ auto OTPayment::GetAmount(std::int64_t& lOutput) const -> bool
         case OTPayment::VOUCHER:
         case OTPayment::INVOICE:
         case OTPayment::PAYMENT_PLAN:
-            lOutput = m_lAmount;
+            output = api_.Factory().Amount(amount_);
             bSuccess = true;
             break;
 
         case OTPayment::NOTICE:
         case OTPayment::SMART_CONTRACT:
-            lOutput = 0;
+            output->Assign(static_cast<std::int64_t>(0));
             bSuccess = false;
             break;
 
@@ -1589,7 +1590,7 @@ auto OTPayment::GetRecipientAcctID(Identifier& theOutput) const -> bool
 void OTPayment::InitPayment()
 {
     m_Type = OTPayment::ERROR_STATE;
-    m_lAmount = 0;
+    amount_->Assign(static_cast<std::int64_t>(0));
     m_lTransactionNum = 0;
     m_lTransNumDisplay = 0;
     m_VALID_FROM = Time{};
@@ -1779,7 +1780,7 @@ auto OTPayment::IsCancelledCheque(const PasswordPrompt& reason) -> bool
 
     auto sender = api_.Factory().NymID();
     auto recipient = api_.Factory().NymID();
-    Amount amount{0};
+    OTAmount amount = api_.Factory().Amount();
 
     if (false == GetSenderNymID(sender)) {
         LogOutput(OT_METHOD)(__FUNCTION__)(": Failed to get sender nym id.")
@@ -1803,7 +1804,7 @@ auto OTPayment::IsCancelledCheque(const PasswordPrompt& reason) -> bool
         return false;
     }
 
-    if (0 != amount) { return false; }
+    if (amount != api_.Factory().Amount()) { return false; }
 
     return true;
 }
@@ -1865,7 +1866,7 @@ void OTPayment::Release()
 void OTPayment::Release_Payment()
 {
     m_Type = OTPayment::ERROR_STATE;
-    m_lAmount = 0;
+    amount_->Assign(0);
     m_lTransactionNum = 0;
     m_lTransNumDisplay = 0;
     m_VALID_FROM = Time{};

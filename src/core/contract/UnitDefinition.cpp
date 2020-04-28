@@ -103,7 +103,7 @@ const VersionNumber Unit::DefaultVersion{2};
 const VersionNumber Unit::MaxVersion{2};
 
 auto Unit::formatLongAmount(
-    std::int64_t lValue,
+    const Amount& lValue,
     std::int32_t nFactor,
     std::int32_t nPower,
     const char* szCurrencySymbol,
@@ -625,7 +625,7 @@ auto Unit::EraseAccountRecord(
 // (Assuming a Factor of 100, Decimal Power of 2, Currency Symbol of "$",
 //  separator of "," and decimal point of ".")
 auto Unit::FormatAmountLocale(
-    std::int64_t amount,
+    const Amount& amount,
     std::string& str_output,
     const std::string& str_thousand,
     const std::string& str_decimal) const -> bool
@@ -668,7 +668,7 @@ auto Unit::FormatAmountLocale(
 // (Example assumes a Factor of 100, Decimal Power of 2
 //  separator of "," and decimal point of ".")
 auto Unit::FormatAmountWithoutSymbolLocale(
-    std::int64_t amount,
+    const Amount& amount,
     std::string& str_output,
     const std::string& str_thousand,
     const std::string& str_decimal) const -> bool
@@ -777,7 +777,7 @@ auto Unit::SigVersion(const Lock& lock) const -> SerializedType
 // (Assuming a Factor of 100, Decimal Power of 2, separator of "," and decimal
 // point of ".")
 auto Unit::StringToAmountLocale(
-    std::int64_t& amount,
+    OTAmount& amount,
     const std::string& str_input,
     const std::string& str_thousand,
     const std::string& str_decimal) const -> bool

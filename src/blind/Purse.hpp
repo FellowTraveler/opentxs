@@ -17,6 +17,7 @@
 #include "opentxs/Types.hpp"
 #include "opentxs/blind/Purse.hpp"
 #include "opentxs/blind/Token.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Secret.hpp"
 #include "opentxs/core/identifier/Server.hpp"
 #include "opentxs/core/identifier/UnitDefinition.hpp"
@@ -103,7 +104,7 @@ public:
         -> bool final;
     auto Verify(const api::server::internal::Manager& server) const
         -> bool final;
-    auto Value() const -> Amount final { return total_value_; }
+    auto Value() const -> const Amount& final { return total_value_; }
 
     auto AddNym(const identity::Nym& nym, const PasswordPrompt& reason)
         -> bool final;
@@ -119,7 +120,7 @@ public:
     auto GeneratePrototokens(
         const identity::Nym& owner,
         const Mint& mint,
-        const Amount amount,
+        const Amount& amount,
         const PasswordPrompt& reason) -> bool;
     auto PrimaryKey(PasswordPrompt& password) -> crypto::key::Symmetric& final;
     auto Pop() -> std::shared_ptr<Token> final;
@@ -151,7 +152,7 @@ private:
     const OTServerID notary_;
     const OTUnitID unit_;
     proto::PurseType state_;
-    Amount total_value_;
+    OTAmount total_value_;
     Time latest_valid_from_;
     Time earliest_valid_to_;
     std::vector<OTToken> tokens_;
@@ -192,7 +193,7 @@ private:
         const identifier::Server& notary,
         const identifier::UnitDefinition& unit,
         const proto::PurseType state,
-        const Amount totalValue,
+        const opentxs::Amount& totalValue,
         const Time validFrom,
         const Time validTo,
         const std::vector<OTToken>& tokens,

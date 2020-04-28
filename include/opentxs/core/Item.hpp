@@ -15,6 +15,7 @@
 #include <set>
 
 #include "opentxs/Types.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Armored.hpp"
 #include "opentxs/core/Contract.hpp"
 #include "opentxs/core/Identifier.hpp"
@@ -71,10 +72,8 @@ using listOfItems = std::list<std::shared_ptr<Item>>;
 // I think that the Item ID shall be the order in which the items are meant to
 // be processed.
 // Items are like tracks on a CD. It is assumed there will be several of them,
-// they
-// come in packs. You normally would deal with the transaction as a single
-// entity,
-// not the item. A transaction contains a list of items.
+// they come in packs. You normally would deal with the transaction as a single
+// entity, not the item. A transaction contains a list of items.
 class Item : public OTTransactionType
 {
 public:
@@ -185,8 +184,8 @@ public:
     inline void SetStatus(const Item::itemStatus& theVal) { m_Status = theVal; }
     inline itemType GetType() const { return m_Type; }
     inline void SetType(itemType theType) { m_Type = theType; }
-    inline std::int64_t GetAmount() const { return m_lAmount; }
-    inline void SetAmount(std::int64_t lAmount) { m_lAmount = lAmount; }
+    inline const Amount& GetAmount() const { return m_lAmount; }
+    inline void SetAmount(const Amount& lAmount) { m_lAmount->Assign(lAmount); }
     OPENTXS_EXPORT void GetNote(String& theStr) const;
     OPENTXS_EXPORT void SetNote(const String& theStr);
     OPENTXS_EXPORT void GetAttachment(String& theStr) const;
@@ -214,7 +213,7 @@ protected:
     OTIdentifier m_AcctToID;
     // For balance, or fee, etc. Only an item can actually have an amount. (Or a
     // "TO" account.)
-    Amount m_lAmount{0};
+    opentxs::OTAmount m_lAmount;
     // Sometimes an item needs to have a list of yet more items. Like balance
     // statements have a list of inbox items. (Just the relevant data, not all
     // the attachments and everything.)

@@ -43,7 +43,7 @@ auto Factory::BailmentNotice(
     const identifier::Server& serverID,
     const opentxs::Identifier& requestID,
     const std::string& txid,
-    const Amount& amount,
+    const opentxs::Amount& amount,
     const opentxs::PasswordPrompt& reason) noexcept
     -> std::shared_ptr<contract::peer::request::BailmentNotice>
 {
@@ -123,7 +123,7 @@ BailmentNotice::BailmentNotice(
     , server_(serverID)
     , requestID_(requestID)
     , txid_(txid)
-    , amount_(amount)
+    , amount_(opentxs::Factory::Amount(amount))
 {
     Lock lock(lock_);
     first_time_init(lock);
@@ -138,7 +138,7 @@ BailmentNotice::BailmentNotice(
     , server_(api_.Factory().ServerID(serialized.pendingbailment().serverid()))
     , requestID_(Identifier::Factory(serialized.pendingbailment().requestid()))
     , txid_(serialized.pendingbailment().txid())
-    , amount_(serialized.pendingbailment().amount())
+    , amount_(opentxs::Factory::Amount(serialized.pendingbailment().amount()))
 {
     Lock lock(lock_);
     init_serialized(lock);
@@ -150,7 +150,7 @@ BailmentNotice::BailmentNotice(const BailmentNotice& rhs)
     , server_(rhs.server_)
     , requestID_(rhs.requestID_)
     , txid_(rhs.txid_)
-    , amount_(rhs.amount_)
+    , amount_(opentxs::Factory::Amount(rhs.amount_))
 {
 }
 
@@ -163,7 +163,7 @@ auto BailmentNotice::IDVersion(const Lock& lock) const -> SerializedType
     pendingbailment.set_serverid(String::Factory(server_)->Get());
     pendingbailment.set_requestid(String::Factory(requestID_)->Get());
     pendingbailment.set_txid(txid_);
-    pendingbailment.set_amount(amount_);
+    pendingbailment.set_amount_mp(amount_->str());
 
     return contract;
 }

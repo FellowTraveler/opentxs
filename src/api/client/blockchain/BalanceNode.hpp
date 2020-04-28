@@ -225,7 +225,7 @@ protected:
         const Lock& lock,
         const Coin& coin,
         const blockchain::Key key,
-        const Amount value) const noexcept;
+        const std::uint64_t value) const noexcept;
     void process_unspent(
         const Lock& lock,
         const Coin& coin,

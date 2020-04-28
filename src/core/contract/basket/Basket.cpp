@@ -72,10 +72,10 @@ namespace opentxs
 Basket::Basket(
     const api::internal::Core& core,
     std::int32_t nCount,
-    std::int64_t lMinimumTransferAmount)
+    const Amount& minimumTransferAmount)
     : Contract(core)
     , m_nSubCount(nCount)
-    , m_lMinimumTransfer(lMinimumTransferAmount)
+    , m_lMinimumTransfer(Factory::Amount(minimumTransferAmount))
     , m_nTransferMultiple(0)
     , m_RequestAccountID(Identifier::Factory())
     , m_dequeItems()
@@ -86,8 +86,13 @@ Basket::Basket(
 }
 
 Basket::Basket(const api::internal::Core& core)
-    : Basket(core, 0, 0)
+    : Basket(core, 0, api_.Factory().Amount())
 {
+}
+
+const Amount& Basket::GetMinimumTransfer() const
+{
+    return m_lMinimumTransfer;
 }
 
 void Basket::HarvestClosingNumbers(
@@ -156,7 +161,7 @@ void Basket::AddRequestSubContract(
 // For generating a real basket
 void Basket::AddSubContract(
     const Identifier& SUB_CONTRACT_ID,
-    std::int64_t lMinimumTransferAmount)
+    const Amount& minimumTransferAmount)
 {
     auto* pItem = new BasketItem;
 
@@ -165,7 +170,7 @@ void Basket::AddSubContract(
         "Error allocating memory in Basket::AddSubContract\n");
 
     pItem->SUB_CONTRACT_ID = SUB_CONTRACT_ID;
-    pItem->lMinimumTransferAmount = lMinimumTransferAmount;
+    pItem->minimumTransferAmount = api_.Factory().Amount(minimumTransferAmount);
 
     m_dequeItems.push_back(pItem);
 }
@@ -216,7 +221,7 @@ auto Basket::ProcessXMLNode(irr::io::IrrXMLReader*& xml) -> std::int32_t
             String::Factory(xml->getAttributeValue("minimumTransfer"));
 
         m_nSubCount = atoi(strSubCount->Get());
-        m_lMinimumTransfer = strMinTrans->ToLong();
+        m_lMinimumTransfer = api_.Factory().Amount(strMinTrans->ToLong());
 
         LogDetail(OT_METHOD)(__FUNCTION__)(": Loading currency basket...")
             .Flush();
@@ -258,7 +263,7 @@ auto Basket::ProcessXMLNode(irr::io::IrrXMLReader*& xml) -> std::int32_t
         auto strTemp =
             String::Factory(xml->getAttributeValue("minimumTransfer"));
         if (strTemp->Exists())
-            pItem->lMinimumTransferAmount = strTemp->ToLong();
+            pItem->minimumTransferAmount = api_.Factory().Amount(strTemp->Get());
 
         strTemp =
             String::Factory(xml->getAttributeValue("closingTransactionNo"));
@@ -330,7 +335,7 @@ void Basket::GenerateContents(StringXML& xmlUnsigned, bool bHideAccountID) const
         TagPtr tagItem(new Tag("basketItem"));
 
         tagItem->add_attribute(
-            "minimumTransfer", std::to_string(pItem->lMinimumTransferAmount));
+            "minimumTransfer", pItem->minimumTransferAmount->str());
         tagItem->add_attribute(
             "accountID", bHideAccountID ? "" : strAcctID->Get());
         tagItem->add_attribute("instrumentDefinitionID", strContractID->Get());

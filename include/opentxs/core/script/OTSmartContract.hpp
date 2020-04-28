@@ -318,9 +318,8 @@ public:
     // a script, is to call StashAcctFunds() or UnstashAcctFunds() (BELOW)
     //
     OPENTXS_EXPORT bool StashFunds(
-        const std::int64_t& lAmount,  // negative amount here means UNstash.
-                                      // Positive
-                                      // means STASH.
+        const Amount& amount,  // negative amount here means UNstash.
+                               // Positive means STASH.
         const Identifier& PARTY_ACCT_ID,
         const identifier::Nym& PARTY_NYM_ID,
         OTStash& theStash,
@@ -430,7 +429,7 @@ private:
     // For moving money from one nym's account to another.
     // it is also nearly identically copied in OTPaymentPlan.
     bool MoveFunds(
-        const std::int64_t& lAmount,
+        const Amount& amount,
         const Identifier& SOURCE_ACCT_ID,
         const identifier::Nym& SENDER_NYM_ID,
         const Identifier& RECIPIENT_ACCT_ID,

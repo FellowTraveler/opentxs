@@ -381,8 +381,8 @@ private:
         const std::string& accountID,
         const proto::AccountEventType type,
         const std::string& workflowID,
-        const Amount amount,
-        const Amount pending,
+        const Amount& amount,
+        const Amount& pending,
         const Time time,
         const std::string& memo) const;
 

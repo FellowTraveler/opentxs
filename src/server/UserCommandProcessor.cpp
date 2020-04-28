@@ -29,6 +29,7 @@
 #endif                             // OT_CASH
 #include "opentxs/client/NymData.hpp"
 #include "opentxs/core/Account.hpp"
+#include "opentxs/core/Amount.hpp"
 #include "opentxs/core/Armored.hpp"
 #include "opentxs/core/Data.hpp"
 #include "opentxs/core/Identifier.hpp"

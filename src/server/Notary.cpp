@@ -169,9 +169,9 @@ void Notary::cancel_cheque(
         return;
     }
 
-    if (cheque.GetAmount() != 0) {
+    if (cheque.GetAmount() != server_.API().Factory().Amount(0)) {
         LogOutput(OT_METHOD)(__FUNCTION__)(": Invalid amount (")(
-            cheque.GetAmount())(").")
+            cheque.GetAmount()->str())(").")
             .Flush();
 
         return;
@@ -1503,7 +1503,7 @@ void Notary::NotarizeWithdrawal(
                 // lNewTransactionNumber);
                 // We save the transaction
                 // number on the server Nym (normally we'd discard it) because
-                const Amount lAmount =
+                const Amount& lAmount =
                     theVoucherRequest->GetAmount();  // when the cheque is
                 // deposited, the server nym,
                 // as the owner of

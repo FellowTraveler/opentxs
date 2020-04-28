@@ -318,6 +318,7 @@ class Root;
 }  // namespace storage
 
 class Account;
+class Amount;
 class AccountList;
 class AccountVisitor;
 class Armored;

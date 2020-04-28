@@ -47,7 +47,7 @@ namespace ui
 class ActivityThreadItem : virtual public ListRow
 {
 public:
-    OPENTXS_EXPORT virtual opentxs::Amount Amount() const noexcept = 0;
+    OPENTXS_EXPORT virtual std::string Amount() const noexcept = 0;
     OPENTXS_EXPORT virtual bool Deposit() const noexcept = 0;
     OPENTXS_EXPORT virtual std::string DisplayAmount() const noexcept = 0;
     OPENTXS_EXPORT virtual bool Loading() const noexcept = 0;

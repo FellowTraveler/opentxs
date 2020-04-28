@@ -90,7 +90,7 @@ public:
         const api::internal::Core& api,
         const identity::Nym& owner,
         const Mint& mint,
-        const Denomination value,
+        const Amount& value,
         Purse& purse,
         const PasswordPrompt& reason);
     Lucre(const Lucre& rhs, blind::Purse& newOwner);
@@ -119,7 +119,7 @@ private:
         const VersionNumber version,
         const proto::TokenState state,
         const std::uint64_t series,
-        const Denomination value,
+        const Amount& value,
         const Time validFrom,
         const Time validTo,
         const String& signature,
